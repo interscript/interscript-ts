@@ -10,9 +10,18 @@
 
 import type { Item, Rule, SubRule } from "../types.js"
 import type { ExecutionContext } from "./context.js"
-import { compileItem } from "./compile-item.js"
+import { compileItem, compileToLiteral } from "./compile-item.js"
 import { MapLogicError } from "../errors.js"
-import { downcase, upcase, titleCase, separate, compose, decompose } from "../stdlib.js"
+import {
+  compileParallelTree,
+  parallelReplaceTree,
+  downcase,
+  upcase,
+  titleCase,
+  separate,
+  compose,
+  decompose,
+} from "../stdlib.js"
 
 type RuleKind = Rule["kind"]
 type RuleExecutorFor<K extends RuleKind> = (
@@ -62,14 +71,46 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
   },
 
   parallel: (rule, ctx) => {
-    // Parallel rule groups in the Ruby runtime use a tree-based single-pass
-    // replace. We approximate by applying each sub in order; this is correct
-    // for non-overlapping subs but may differ from Ruby when subs can fire
-    // on each other's output.
-    // See TODO.complete/42-parallel-replace.md for the faithful port.
+    // Parallel rule groups: apply all sub-rules simultaneously via trie.
+    // Direct port of Ruby's Interscript::Stdlib.parallel_replace_compile_tree
+    // + parallel_replace_tree. Longest match wins at each position.
+    //
+    // Constraints (matching Ruby):
+    //   - All inner rules must be Sub (no nesting, no run, no funcall)
+    //   - No before/after/notBefore/notAfter (would break single-pass)
+    //   - from/to must compile to literal strings (no regex/captures)
+    // Anything else falls back to sequential application with a warning.
+    const pairs: [string, string][] = []
     for (const inner of rule.rules) {
-      executeRule(inner, ctx)
+      if (inner.kind !== "sub") {
+        // Non-Sub rule in parallel block: fall back to sequential.
+        for (const fallback of rule.rules) executeRule(fallback, ctx)
+        return
+      }
+      if (inner.before || inner.after || inner.notBefore || inner.notAfter) {
+        for (const fallback of rule.rules) executeRule(fallback, ctx)
+        return
+      }
+      if (!inner.from) {
+        for (const fallback of rule.rules) executeRule(fallback, ctx)
+        return
+      }
+      const fromLit = compileToLiteral(inner.from, ctx)
+      const toItem = inner.to
+      const toLit = !toItem
+        ? ""
+        : toItem.kind === "funcall_inline"
+          ? null
+          : compileToLiteral(toItem, ctx)
+      if (fromLit === null || toLit === null) {
+        // Couldn't compile to literal (captures, regex); fall back.
+        for (const fallback of rule.rules) executeRule(fallback, ctx)
+        return
+      }
+      pairs.push([fromLit, toLit])
     }
+    const tree = compileParallelTree(pairs)
+    ctx.current = parallelReplaceTree(ctx.current, tree)
   },
 
   sequential: (rule, ctx) => {

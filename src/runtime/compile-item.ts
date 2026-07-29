@@ -74,6 +74,53 @@ export function compileItem(item: Item, ctx: ExecutionContext): CompiledItem {
 }
 
 /**
+ * Compile an Item to a literal string only (no regex semantics).
+ * Used by the parallel-replace executor which needs exact strings.
+ *
+ * Returns `null` if the Item cannot be represented as a literal
+ * (captures, regex-only constructs). The caller decides whether to
+ * fall back to sequential execution.
+ */
+export function compileToLiteral(item: Item, ctx: ExecutionContext): string | null {
+  switch (item.kind) {
+    case "string":
+      return item.value
+
+    case "alias": {
+      const stdlib = STDLIB_ALIASES[item.name]
+      if (stdlib) return stdlib.literal === "" ? null : stdlib.literal
+      const resolved = ctx.resolveAlias(item.name)
+      if (!resolved) return null
+      return compileToLiteral(resolved, ctx)
+    }
+
+    case "capture_group":
+    case "capture_ref":
+    case "repeat":
+    case "stage_ref":
+      return null
+
+    case "any": {
+      // `any` represents alternative spellings (e.g. "te" vs "t" for the
+      // same source char). Ruby picks the first option in non-iterating
+      // mode; we match that.
+      if (item.of.length === 0) return null
+      return compileToLiteral(item.of[0]!, ctx)
+    }
+
+    case "group": {
+      let out = ""
+      for (const child of item.items) {
+        const lit = compileToLiteral(child, ctx)
+        if (lit === null) return null
+        out += lit
+      }
+      return out
+    }
+  }
+}
+
+/**
  * Stdlib alias table — single-character aliases like `:word`, `:boundary`.
  * Mirrors Interscript::Stdlib::ALIASES in Ruby.
  */

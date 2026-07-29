@@ -19,28 +19,97 @@ export function parallelReplace(
   pairs: readonly (readonly [string, string])[],
 ): string {
   if (pairs.length === 0) return input
+  return parallelReplaceTree(input, compileParallelTree(pairs))
+}
 
-  const sorted = [...pairs].sort((a, b) => b[0].length - a[0].length)
-  let result = ""
+/**
+ * Trie node for parallel replacement. Maps char code → child node.
+ * `match` holds the replacement string when this node is the end of a
+ * complete "from" pattern.
+ *
+ * Port of Ruby's nested-hash tree with `nil` sentinel for matches.
+ */
+export interface ParallelTrieNode {
+  readonly children: Map<number, ParallelTrieNode>
+  match: string | null
+}
+
+export function emptyTrieNode(): ParallelTrieNode {
+  return { children: new Map(), match: null }
+}
+
+/**
+ * Build a trie from (from, to) pairs. Each "from" string becomes a path
+ * from root through character codes; the final node holds `match = to`.
+ *
+ * Multiple "from"s can share prefixes naturally. Longest match wins at
+ * runtime (handled by `parallelReplaceTree`).
+ *
+ * Port of `Interscript::Stdlib.parallel_replace_compile_tree`.
+ */
+export function compileParallelTree(
+  pairs: readonly (readonly [string, string])[],
+): ParallelTrieNode {
+  const root = emptyTrieNode()
+  for (const [from, to] of pairs) {
+    if (from.length === 0) continue
+    let branch = root
+    for (let i = 0; i < from.length - 1; i++) {
+      const code = from.charCodeAt(i)
+      let next = branch.children.get(code)
+      if (!next) {
+        next = emptyTrieNode()
+        branch.children.set(code, next)
+      }
+      branch = next
+    }
+    const last = from.charCodeAt(from.length - 1)
+    let leaf = branch.children.get(last)
+    if (!leaf) {
+      leaf = emptyTrieNode()
+      branch.children.set(last, leaf)
+    }
+    leaf.match = to
+  }
+  return root
+}
+
+/**
+ * Walk `input` against the trie, emitting the longest match at each
+ * position. Falls back to passing through the character unchanged.
+ *
+ * Port of `Interscript::Stdlib.parallel_replace_tree`.
+ */
+export function parallelReplaceTree(input: string, tree: ParallelTrieNode): string {
+  let out = ""
+  const len = input.length
   let i = 0
 
-  while (i < input.length) {
-    let matched = false
-    for (const [from, to] of sorted) {
-      if (from.length === 0) continue
-      if (input.startsWith(from, i)) {
-        result += to
-        i += from.length
-        matched = true
-        break
+  while (i < len) {
+    let branch = tree
+    let matchEnd = 0
+    let matchReplacement: string | null = null
+
+    for (let j = 0; i + j < len; j++) {
+      const code = input.charCodeAt(i + j)
+      const next = branch.children.get(code)
+      if (!next) break
+      branch = next
+      if (branch.match !== null) {
+        matchEnd = j + 1
+        matchReplacement = branch.match
       }
     }
-    if (!matched) {
-      result += input[i]
+
+    if (matchReplacement !== null && matchEnd > 0) {
+      out += matchReplacement
+      i += matchEnd
+    } else {
+      out += input[i]
       i += 1
     }
   }
-  return result
+  return out
 }
 
 /**
