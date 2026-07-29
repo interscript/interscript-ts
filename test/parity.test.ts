@@ -28,8 +28,7 @@ const availableMaps: Set<string> = (() => {
 // Known partial-parity cases (TS interpreter differs from Ruby for these).
 // Tracked in TODO.complete/42-parallel-rule-semantics.md.
 const KNOWN_PARTIAL = new Set([
-  "un-tam-Taml-Latn-1972", // combining-mark re-application order
-  "odni-rus-Cyrl-Latn-2015", // multi-word inputs: combining mark re-application
+  "odni-rus-Cyrl-Latn-2015", // multi-word: "Timofeyyevich" vs "Timofeyevich"
 ])
 
 describe("parity with Ruby interpreter", () => {

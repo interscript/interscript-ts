@@ -124,21 +124,20 @@ function executeSubRule(rule: SubRule, ctx: ExecutionContext): void {
   if (!rule.from) throw new MapLogicError("Sub rule missing 'from'")
 
   const from = compileItem(rule.from, ctx)
+  // `before` and `after` are lookarounds — they assert without consuming.
+  // Ruby's interpreter uses Ruby gsub with capture groups, which DOES
+  // consume the surrounding context and re-inserts it via backreferences.
+  // We use lookarounds for correctness with multi-byte scripts.
   const before = rule.before ? compileItem(rule.before, ctx).re : ""
   const after = rule.after ? compileItem(rule.after, ctx).re : ""
   const notBefore = rule.notBefore ? compileItem(rule.notBefore, ctx).re : ""
   const notAfter = rule.notAfter ? compileItem(rule.notAfter, ctx).re : ""
 
   const patternParts: string[] = []
-  let captureOffset = 0
-  if (before) {
-    patternParts.push(`(${before})`)
-    captureOffset += 1
-  }
+  if (before) patternParts.push(`(?<=${before})`)
   if (notBefore) patternParts.push(`(?<!${notBefore})`)
   patternParts.push(`(${from.re})`)
-  const matchGroup = captureOffset + 1
-  if (after) patternParts.push(`(${after})`)
+  if (after) patternParts.push(`(?=${after})`)
   if (notAfter) patternParts.push(`(?!${notAfter})`)
 
   let re: RegExp
@@ -150,7 +149,7 @@ function executeSubRule(rule: SubRule, ctx: ExecutionContext): void {
     })
   }
 
-  const replacement = buildReplacement(rule.to, ctx, before ? 1 : 0, matchGroup)
+  const replacement = buildReplacement(rule.to, ctx)
   ctx.current =
     typeof replacement === "string"
       ? ctx.current.replace(re, replacement)
@@ -160,12 +159,13 @@ function executeSubRule(rule: SubRule, ctx: ExecutionContext): void {
 /**
  * Build the replacement string for a sub rule.
  * Handles plain Items (use their literal form) and inline funcalls.
+ *
+ * With lookaround-based patterns (no surrounding capture groups), the
+ * replacement is simply the compiled literal of the `to` item.
  */
 function buildReplacement(
   to: Item | { kind: "funcall_inline"; name: string } | undefined,
   ctx: ExecutionContext,
-  beforeGroups: number,
-  matchGroup: number,
 ): string | ((match: string, ...args: unknown[]) => string) {
   if (!to) return ""
   if (to.kind === "funcall_inline") {
@@ -174,10 +174,6 @@ function buildReplacement(
     return (match: string) => fn(match)
   }
   const compiled = compileItem(to, ctx)
-  // Capture refs in the literal ($1...) need to be renumbered by `beforeGroups`.
-  // For the common case (no `before`), compiled.literal is already correct.
-  void beforeGroups
-  void matchGroup
   return compiled.literal
 }
 
