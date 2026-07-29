@@ -2,8 +2,9 @@ import { defineConfig } from "vitest/config"
 
 export default defineConfig({
   test: {
+    // Bench files use .bench.ts to keep them out of the default suite.
     include: ["test/**/*.test.ts"],
-    exclude: ["test/fixtures/**", "node_modules/**"],
+    exclude: ["test/fixtures/**", "node_modules/**", "test/**/*.bench.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "json-summary"],
