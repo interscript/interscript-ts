@@ -1,0 +1,63 @@
+{
+  "name": "interscript-ts",
+  "version": "0.1.0",
+  "description": "Interscript TypeScript runtime — interoperable script conversion",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:parity": "vitest run test/parity",
+    "lint": "eslint src test",
+    "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
+    "gen:parity": "ruby scripts/gen-parity-fixtures.rb > test/fixtures/parity.json",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "transliteration",
+    "romanization",
+    "script-conversion",
+    "i18n",
+    "interscript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/interscript/interscript-ts.git"
+  },
+  "author": "Ribose Inc. <open.source@ribose.com>",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/interscript/interscript-ts/issues"
+  },
+  "homepage": "https://github.com/interscript/interscript-ts#readme",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.0.0",
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.0",
+    "prettier": "^3.9.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.65.0",
+    "vitest": "^4.1.0"
+  }
+}
