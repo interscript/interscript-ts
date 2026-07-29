@@ -7,6 +7,7 @@
  */
 
 import type { CompiledMap, Item } from "../types.js"
+import type { MapLoader } from "../loader.js"
 
 export class ExecutionContext {
   /** Current working string the interpreter is transforming. */
@@ -15,16 +16,20 @@ export class ExecutionContext {
   /** Map currently being executed. */
   readonly map: CompiledMap
 
+  /** Optional loader — used to resolve run-rule dependencies. */
+  private readonly loader: MapLoader | undefined
+
   /** Lazily-resolved aliases. */
   private readonly aliasCache = new Map<string, Item>()
 
   /** Function cache so repeated function calls don't re-resolve. */
   readonly functions: CompiledMap["functions"]
 
-  constructor(map: CompiledMap, initial: string) {
+  constructor(map: CompiledMap, initial: string, loader?: MapLoader) {
     this.map = map
     this.current = initial
     this.functions = map.functions
+    this.loader = loader
   }
 
   resolveAlias(name: string): Item | undefined {
@@ -34,9 +39,21 @@ export class ExecutionContext {
     return resolved
   }
 
-  withString(s: string): ExecutionContext {
-    const next = new ExecutionContext(this.map, s)
-    next.aliasCache.clear()
-    return next
+  /**
+   * Spawn a new context for a different map (used by `run` rule with docName).
+   * Reuses the same loader; fresh alias cache.
+   */
+  withMap(map: CompiledMap): ExecutionContext {
+    return new ExecutionContext(map, this.current, this.loader)
+  }
+
+  /**
+   * Load a dependency map via the configured loader. Throws if no loader.
+   */
+  loadDependency(systemCode: string): CompiledMap {
+    if (!this.loader) {
+      throw new Error(`Cannot resolve dependency ${systemCode}: no loader configured`)
+    }
+    return this.loader.load(systemCode)
   }
 }

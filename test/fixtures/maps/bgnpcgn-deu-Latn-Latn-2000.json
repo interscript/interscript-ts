@@ -1,0 +1,253 @@
+{
+  "schemaVersion": 1,
+  "systemCode": "bgnpcgn-deu-Latn-Latn-2000",
+  "dependencies": [
+    "posix"
+  ],
+  "metadata": {
+    "authority_id": "bgnpcgn",
+    "id": "2000",
+    "language": "iso-639-2:deu",
+    "source_script": "Latn",
+    "destination_script": "Latn",
+    "name": "Roman-Script Spelling Convention of German (2000 Agreement)",
+    "creation_date": "2000",
+    "nonstandard": {}
+  },
+  "stages": [
+    {
+      "kind": "stage",
+      "name": "main",
+      "rules": [
+        {
+          "kind": "sub",
+          "from": {
+            "kind": "group",
+            "items": [
+              {
+                "kind": "string",
+                "value": "β"
+              },
+              {
+                "kind": "capture_group",
+                "data": {
+                  "kind": "alias",
+                  "name": "upper"
+                }
+              }
+            ]
+          },
+          "to": {
+            "kind": "group",
+            "items": [
+              {
+                "kind": "string",
+                "value": "SS"
+              },
+              {
+                "kind": "capture_ref",
+                "id": 1
+              }
+            ]
+          },
+          "before": {
+            "kind": "any",
+            "of": []
+          }
+        },
+        {
+          "kind": "sub",
+          "from": {
+            "kind": "group",
+            "items": [
+              {
+                "kind": "string",
+                "value": "Ä"
+              },
+              {
+                "kind": "capture_group",
+                "data": {
+                  "kind": "alias",
+                  "name": "upper"
+                }
+              }
+            ]
+          },
+          "to": {
+            "kind": "group",
+            "items": [
+              {
+                "kind": "string",
+                "value": "AE"
+              },
+              {
+                "kind": "capture_ref",
+                "id": 1
+              }
+            ]
+          },
+          "before": {
+            "kind": "any",
+            "of": []
+          }
+        },
+        {
+          "kind": "sub",
+          "from": {
+            "kind": "group",
+            "items": [
+              {
+                "kind": "string",
+                "value": "Ö"
+              },
+              {
+                "kind": "capture_group",
+                "data": {
+                  "kind": "alias",
+                  "name": "upper"
+                }
+              }
+            ]
+          },
+          "to": {
+            "kind": "group",
+            "items": [
+              {
+                "kind": "string",
+                "value": "OE"
+              },
+              {
+                "kind": "capture_ref",
+                "id": 1
+              }
+            ]
+          },
+          "before": {
+            "kind": "any",
+            "of": []
+          }
+        },
+        {
+          "kind": "sub",
+          "from": {
+            "kind": "group",
+            "items": [
+              {
+                "kind": "string",
+                "value": "Ü"
+              },
+              {
+                "kind": "capture_group",
+                "data": {
+                  "kind": "alias",
+                  "name": "upper"
+                }
+              }
+            ]
+          },
+          "to": {
+            "kind": "group",
+            "items": [
+              {
+                "kind": "string",
+                "value": "UE"
+              },
+              {
+                "kind": "capture_ref",
+                "id": 1
+              }
+            ]
+          },
+          "before": {
+            "kind": "any",
+            "of": []
+          }
+        },
+        {
+          "kind": "parallel",
+          "rules": [
+            {
+              "kind": "sub",
+              "from": {
+                "kind": "string",
+                "value": "Ä"
+              },
+              "to": {
+                "kind": "string",
+                "value": "Ae"
+              }
+            },
+            {
+              "kind": "sub",
+              "from": {
+                "kind": "string",
+                "value": "Ö"
+              },
+              "to": {
+                "kind": "string",
+                "value": "Oe"
+              }
+            },
+            {
+              "kind": "sub",
+              "from": {
+                "kind": "string",
+                "value": "Ü"
+              },
+              "to": {
+                "kind": "string",
+                "value": "Ue"
+              }
+            },
+            {
+              "kind": "sub",
+              "from": {
+                "kind": "string",
+                "value": "ä"
+              },
+              "to": {
+                "kind": "string",
+                "value": "ae"
+              }
+            },
+            {
+              "kind": "sub",
+              "from": {
+                "kind": "string",
+                "value": "ö"
+              },
+              "to": {
+                "kind": "string",
+                "value": "oe"
+              }
+            },
+            {
+              "kind": "sub",
+              "from": {
+                "kind": "string",
+                "value": "ü"
+              },
+              "to": {
+                "kind": "string",
+                "value": "ue"
+              }
+            },
+            {
+              "kind": "sub",
+              "from": {
+                "kind": "string",
+                "value": "β"
+              },
+              "to": {
+                "kind": "string",
+                "value": "ss"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "aliases": {},
+  "functions": {}
+}

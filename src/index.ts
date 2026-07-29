@@ -11,7 +11,12 @@
  * interpreter (OCP).
  */
 
-import type { CompiledMap, DetectionResult, DetectOptions, SystemCode } from "./types.js"
+import type {
+  CompiledMap,
+  DetectionResult,
+  DetectOptions,
+  SystemCode,
+} from "./types.js"
 import { MapLoader, type LoadStrategy } from "./loader.js"
 import { executeStage } from "./runtime/interpreter.js"
 import {
@@ -20,19 +25,42 @@ import {
   MapNotFoundError,
   SystemConversionError,
 } from "./errors.js"
+import { detectInMaps } from "./detector.js"
 
-export { InterscriptError, MapNotFoundError, SystemConversionError, DependencyMissingError }
+export {
+  InterscriptError,
+  MapNotFoundError,
+  SystemConversionError,
+  DependencyMissingError,
+  MapLogicError,
+} from "./errors.js"
 export type {
   CompiledMap,
+  CompiledMapJson,
   DetectionResult,
   DetectOptions,
+  FunctionDef,
   MapInfo,
   SystemCode,
   Stage,
   Rule,
   Item,
+  SubRule,
+  RunRule,
+  FuncallRule,
+  ParallelRule,
+  SequentialRule,
+  StringItem,
+  CaptureGroupItem,
+  CaptureRefItem,
+  AliasItem,
+  AnyItem,
+  GroupItem,
+  RepeatItem,
+  StageItem,
 } from "./types.js"
 export type { LoadStrategy, MapLoader } from "./loader.js"
+export { normaliseMap, filesystemStrategy, bundledStrategy } from "./loaders.js"
 
 export interface InterscriptConfig {
   /** Strategies consulted in order when loading a map. */
@@ -79,7 +107,7 @@ class InterscriptRuntime {
     try {
       const map = this.loadMap(systemCode)
       const stageName = stage ?? this.defaultStage
-      return executeStage(map, stageName, input)
+      return executeStage(map, stageName, input, this.loader)
     } catch (e) {
       if (e instanceof InterscriptError) throw e
       throw new SystemConversionError(
@@ -91,23 +119,28 @@ class InterscriptRuntime {
 
   /** List all maps currently loaded in the cache. */
   loadedMaps(): readonly SystemCode[] {
-    return Array.from((this.loader as unknown as { cache: Map<string, unknown> }).cache.keys())
+    return this.loader.loadedMaps()
+  }
+
+  /** Direct loader access (for detector + advanced use). */
+  getLoader(): MapLoader {
+    return this.loader
   }
 
   /**
    * Detect which transliteration system best explains how `input` became
    * `output`. Returns candidates ranked by edit distance.
    *
-   * NOTE: Full detector requires scanning all maps and computing edit
-   * distance. Implemented as O(n) scan with Levenshtein. For large map
-   * sets, consider pre-filtering via map_pattern.
+   * Iterates every loaded map; for large map sets, supply `mapPattern`
+   * to pre-filter.
    */
-  detect(_input: string, _output: string, _opts?: DetectOptions): DetectionResult[] {
-    // Detector requires iteration over all known maps, which depends on
-    // the loader exposing enumeration. Tracked in TODO.complete/29-...
-    throw new Error(
-      "detect() not yet implemented — see TODO.complete/29-detector-implementation.md",
-    )
+  detect(
+    input: string,
+    output: string,
+    opts: DetectOptions = {},
+    knownMaps?: Iterable<SystemCode>,
+  ): DetectionResult[] {
+    return detectInMaps(input, output, this.loader, opts, knownMaps)
   }
 }
 
@@ -136,7 +169,11 @@ export function loadMap(systemCode: SystemCode): CompiledMap {
 }
 
 /** Public API — mirrors Interscript.detect. */
-export function detect(input: string, output: string, opts?: DetectOptions): DetectionResult[] {
+export function detect(
+  input: string,
+  output: string,
+  opts?: DetectOptions,
+): DetectionResult[] {
   return runtime().detect(input, output, opts)
 }
 

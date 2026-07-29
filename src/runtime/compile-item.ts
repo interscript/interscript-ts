@@ -31,12 +31,20 @@ export function compileItem(item: Item, ctx: ExecutionContext): CompiledItem {
     case "string":
       return { re: regexpEscape(item.value), literal: item.value }
 
-    case "capture": {
-      const idx = item.index
-      return { re: `(${idx > 0 ? `\\${idx}` : ""})`, literal: `$${idx}` }
+    case "capture_group": {
+      const inner = compileItem(item.data, ctx)
+      return { re: `(${inner.re})`, literal: inner.literal }
+    }
+
+    case "capture_ref": {
+      const id = item.id
+      return { re: `\\${id}`, literal: `$${id}` }
     }
 
     case "alias": {
+      // Stdlib aliases (single characters like \w, \b, etc.)
+      const stdlib = STDLIB_ALIASES[item.name]
+      if (stdlib) return stdlib
       const resolved = ctx.resolveAlias(item.name)
       if (!resolved) return { re: "", literal: "" }
       return compileItem(resolved, ctx)
@@ -55,7 +63,7 @@ export function compileItem(item: Item, ctx: ExecutionContext): CompiledItem {
     case "repeat": {
       const inner = compileItem(item.item, ctx).re
       const { min, max } = item
-      const quant = max === Infinity ? `${min === 0 ? "*" : "+"}` : `{${min},${max}}`
+      const quant = max === Infinity ? (min === 0 ? "*" : "+") : `{${min},${max}}`
       return { re: `(?:${inner})${quant}`, literal: "" }
     }
 
@@ -64,3 +72,26 @@ export function compileItem(item: Item, ctx: ExecutionContext): CompiledItem {
       return { re: "", literal: "" }
   }
 }
+
+/**
+ * Stdlib alias table — single-character aliases like `:word`, `:boundary`.
+ * Mirrors Interscript::Stdlib::ALIASES in Ruby.
+ */
+const STDLIB_ALIASES: Readonly<Record<string, CompiledItem>> = Object.freeze({
+  any_character: { re: ".", literal: "" },
+  none: { re: "", literal: "" },
+  space: { re: " ", literal: " " },
+  whitespace: { re: "\\s+", literal: " " },
+  boundary: { re: "\\b", literal: "" },
+  non_word_boundary: { re: "\\B", literal: "" },
+  word: { re: "\\w", literal: "" },
+  not_word: { re: "\\W", literal: "" },
+  alpha: { re: "[a-zA-Z]", literal: "" },
+  not_alpha: { re: "[^a-zA-Z]", literal: "" },
+  digit: { re: "\\d", literal: "" },
+  not_digit: { re: "\\D", literal: "" },
+  line_start: { re: "(?<=\\n|^)", literal: "" },
+  line_end: { re: "(?=\\n|$)", literal: "" },
+  string_start: { re: "^", literal: "" },
+  string_end: { re: "$", literal: "" },
+})

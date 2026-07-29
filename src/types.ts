@@ -33,20 +33,42 @@ export interface DetectOptions {
   mapPattern?: string
 }
 
-/** IR (intermediate representation) of a compiled map.
+/**
+ * JSON IR shape emitted by `Interscript::Compiler::JsonIR` (Ruby).
  *
- * This is the JSON shape the TS interpreter consumes. Maps can be
- * produced by the Ruby compiler (`Interscript::Compiler::JsonIR`) or
- * hand-authored. The shape is versioned.
+ * `aliases` and `functions` are serialised as plain JSON objects (not
+ * Maps) because JSON has no Map type. The runtime reconstructs them
+ * into Maps at load time via `normaliseMap()`.
+ */
+export interface CompiledMapJson {
+  readonly schemaVersion: 1
+  readonly systemCode: SystemCode
+  readonly dependencies: readonly SystemCode[]
+  readonly metadata?: Readonly<Record<string, unknown>>
+  readonly stages: readonly Stage[]
+  readonly aliases: Readonly<Record<string, Item>>
+  readonly functions: Readonly<Record<string, unknown>>
+}
+
+/**
+ * Runtime form of a compiled map.
+ *
+ * Public consumers should treat this as opaque; the loader produces it
+ * from `CompiledMapJson` via `normaliseMap()`.
  */
 export interface CompiledMap {
   readonly schemaVersion: 1
   readonly systemCode: SystemCode
   readonly dependencies: readonly SystemCode[]
-  readonly metadata?: MapInfo
+  readonly metadata?: Readonly<Record<string, unknown>>
   readonly stages: readonly Stage[]
   readonly aliases: ReadonlyMap<string, Item>
   readonly functions: ReadonlyMap<string, FunctionDef>
+}
+
+/** Mutable builder form — produced by `normaliseMap`, frozen before use. */
+export type CompiledMapBuilder = {
+  -readonly [K in keyof CompiledMap]: CompiledMap[K]
 }
 
 export interface FunctionDef {
@@ -62,24 +84,27 @@ export interface Stage {
   readonly rules: readonly Rule[]
 }
 
-/** Discriminated union of all rule kinds.
+/**
+ * Discriminated union of all rule kinds.
  * Adding a new rule kind = adding a variant here + an executor.
  */
-export type Rule = SubRule | RunRule | FuncallRule
+export type Rule = SubRule | RunRule | FuncallRule | ParallelRule | SequentialRule
 
 export interface SubRule {
   readonly kind: "sub"
-  readonly from: Item
-  readonly to: Item
+  readonly from?: Item
+  readonly to?: Item | FuncallInline
   readonly before?: Item
   readonly after?: Item
   readonly notBefore?: Item
   readonly notAfter?: Item
+  readonly priority?: number
 }
 
 export interface RunRule {
   readonly kind: "run"
   readonly stage: string
+  readonly docName?: string
 }
 
 export interface FuncallRule {
@@ -88,23 +113,56 @@ export interface FuncallRule {
   readonly kwargs?: Readonly<Record<string, unknown>>
 }
 
+/** Parallel rule group — all subs inside apply in a single pass. */
+export interface ParallelRule {
+  readonly kind: "parallel"
+  readonly rules: readonly Rule[]
+}
+
+/** Sequential rule group — applies rules in order, like a sub-stage. */
+export interface SequentialRule {
+  readonly kind: "sequential"
+  readonly rules: readonly Rule[]
+}
+
+/** Inline function call used as a SubRule's `to` (e.g. `:upcase`). */
+export interface FuncallInline {
+  readonly kind: "funcall_inline"
+  readonly name: string
+}
+
 /** Items are the building blocks of pattern/replace expressions. */
 export type Item =
-  StringItem | CaptureItem | AliasItem | AnyItem | GroupItem | RepeatItem | StageItem
+  | StringItem
+  | CaptureGroupItem
+  | CaptureRefItem
+  | AliasItem
+  | AnyItem
+  | GroupItem
+  | RepeatItem
+  | StageItem
 
 export interface StringItem {
   readonly kind: "string"
   readonly value: string
 }
 
-export interface CaptureItem {
-  readonly kind: "capture"
-  readonly index: number
+/** A capture group `(...)` — defines a new capture. */
+export interface CaptureGroupItem {
+  readonly kind: "capture_group"
+  readonly data: Item
+}
+
+/** A back-reference to a previously-defined capture group (`\1`). */
+export interface CaptureRefItem {
+  readonly kind: "capture_ref"
+  readonly id: number
 }
 
 export interface AliasItem {
   readonly kind: "alias"
   readonly name: string
+  readonly map?: string
 }
 
 export interface AnyItem {

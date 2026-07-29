@@ -9,10 +9,10 @@
 export class InterscriptError extends Error {
   override readonly cause?: unknown
 
-  constructor(message: string, cause?: unknown) {
-    super(message)
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options)
     this.name = new.target.name
-    this.cause = cause
+    this.cause = options?.cause
   }
 }
 

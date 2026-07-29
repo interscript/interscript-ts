@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "systemCode": "un-ukr-Cyrl-Latn-2012",
+  "dependencies": [
+    "ua-ukr-Cyrl-Latn-2010"
+  ],
+  "metadata": {
+    "authority_id": "un",
+    "id": "2012",
+    "language": "iso-639-2:ukr",
+    "source_script": "Cyrl",
+    "destination_script": "Latn",
+    "name": "Romanization of Belarusian, Russian And Ukrainian Cyrillic (2012)",
+    "creation_date": "2010",
+    "nonstandard": {}
+  },
+  "stages": [
+    {
+      "kind": "stage",
+      "name": "main",
+      "rules": [
+        {
+          "kind": "run",
+          "stage": "main",
+          "docName": "ua-ukr-Cyrl-Latn-2010"
+        }
+      ]
+    }
+  ],
+  "aliases": {},
+  "functions": {}
+}
