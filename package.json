@@ -57,7 +57,7 @@
   "homepage": "https://github.com/interscript/interscript-ts#readme",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.1.2",
     "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.0",
