@@ -166,3 +166,66 @@ export function compose(input: string): string {
 export function decompose(input: string): string {
   return input.normalize("NFD")
 }
+
+/**
+ * Single-pass parallel replace: at each position, try the trie AND
+ * any constrained regex matchers. Longest match wins. Ties go to the
+ * trie (matching Ruby's tree-first-then-megaregexp behaviour).
+ *
+ * This is the correct way to handle parallel rules that mix constrained
+ * and unconstrained sub rules in a single pass.
+ */
+export interface ConstrainedMatcher {
+  fromLength: number
+  test: (s: string, pos: number) => { replacement: string; matchLength: number } | null
+}
+
+export function parallelSinglePass(
+  input: string,
+  tree: ParallelTrieNode | null,
+  matchers: ConstrainedMatcher[],
+): string {
+  let out = ""
+  const len = input.length
+  let i = 0
+
+  while (i < len) {
+    let bestLen = 0
+    let bestReplacement: string | null = null
+
+    // Try the trie (unconstrained rules)
+    if (tree) {
+      let branch = tree
+      for (let j = 0; i + j < len; j++) {
+        const code = input.charCodeAt(i + j)
+        const next = branch.children.get(code)
+        if (!next) break
+        branch = next
+        if (branch.match !== null) {
+          bestLen = j + 1
+          bestReplacement = branch.match
+        }
+      }
+    }
+
+    // Try each constrained matcher
+    for (const matcher of matchers) {
+      const result = matcher.test(input, i)
+      if (result !== null) {
+        if (result.matchLength > bestLen) {
+          bestLen = result.matchLength
+          bestReplacement = result.replacement
+        }
+      }
+    }
+
+    if (bestReplacement !== null && bestLen > 0) {
+      out += bestReplacement
+      i += bestLen
+    } else {
+      out += input[i]
+      i += 1
+    }
+  }
+  return out
+}

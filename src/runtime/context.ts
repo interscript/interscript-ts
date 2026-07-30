@@ -34,7 +34,23 @@ export class ExecutionContext {
 
   resolveAlias(name: string): Item | undefined {
     if (this.aliasCache.has(name)) return this.aliasCache.get(name)
-    const resolved = this.map.aliases.get(name)
+    // Try the current map's aliases first
+    let resolved = this.map.aliases.get(name)
+    // If not found, try dependency maps' aliases (transitive resolution)
+    if (!resolved && this.loader) {
+      for (const dep of this.map.dependencies) {
+        try {
+          const depMap = this.loader.load(dep)
+          const depAlias = depMap.aliases.get(name)
+          if (depAlias) {
+            resolved = depAlias
+            break
+          }
+        } catch {
+          // dependency not loadable; skip
+        }
+      }
+    }
     if (resolved) this.aliasCache.set(name, resolved)
     return resolved
   }

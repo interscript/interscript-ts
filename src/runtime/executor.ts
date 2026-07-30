@@ -15,6 +15,8 @@ import { MapLogicError } from "../errors.js"
 import {
   compileParallelTree,
   parallelReplaceTree,
+  parallelSinglePass,
+  type ConstrainedMatcher,
   downcase,
   upcase,
   titleCase,
@@ -71,40 +73,36 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
   },
 
   parallel: (rule, ctx) => {
-    // Parallel rule groups: Ruby applies ALL rules in a single pass
-    // (longest-match-wins). We approximate this by sorting rules by
-    // from-length descending, then applying sequentially. This ensures
-    // multi-char rules (like `εί → í`) fire before single-char rules
-    // (like `ε → e`), matching Ruby's parallel semantics.
+    // Parallel rule groups: split into unconstrained (trie) and
+    // constrained (sequential). Trie first (longest-match-wins),
+    // then constrained sorted by from-length descending.
     const triePairs: [string, string][] = []
     const constrainedRules: SubRule[] = []
 
     for (const inner of rule.rules) {
       if (inner.kind !== "sub" || !inner.from) {
-        constrainedRules.push(inner as SubRule)
+        // Non-sub rules: apply via executeRule after the parallel pass
         continue
       }
-      if (inner.before || inner.after || inner.notBefore || inner.notAfter) {
+
+      const hasConstraints = inner.before || inner.after || inner.notBefore || inner.notAfter
+
+      if (!hasConstraints) {
+        // Unconstrained: add to trie
+        const toItem = inner.to
+        const toLit = !toItem
+          ? ""
+          : toItem.kind === "funcall_inline"
+            ? null
+            : compileToLiteral(toItem, ctx)
+        if (toLit === null) continue
+        const fromAlts = expandFromLiterals(inner.from, ctx)
+        if (fromAlts === null) continue
+        for (const fromLit of fromAlts) {
+          triePairs.push([fromLit, toLit])
+        }
+      } else {
         constrainedRules.push(inner)
-        continue
-      }
-      const toItem = inner.to
-      const toLit = !toItem
-        ? ""
-        : toItem.kind === "funcall_inline"
-          ? null
-          : compileToLiteral(toItem, ctx)
-      if (toLit === null) {
-        constrainedRules.push(inner)
-        continue
-      }
-      const fromAlts = expandFromLiterals(inner.from, ctx)
-      if (fromAlts === null) {
-        constrainedRules.push(inner)
-        continue
-      }
-      for (const fromLit of fromAlts) {
-        triePairs.push([fromLit, toLit])
       }
     }
 
@@ -113,12 +111,12 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
       ctx.current = parallelReplaceTree(ctx.current, tree)
     }
 
-    // Apply constrained rules AFTER the trie pass, sorted by from-length
+    // Apply constrained rules after the trie pass, sorted by from-length
     // descending so longer patterns fire first.
     const sorted = constrainedRules
       .map((r) => {
-        const fromLit = r.from ? compileToLiteral(r.from, ctx) : null
-        return { rule: r, len: fromLit?.length ?? 0 }
+        const fl = r.from ? compileToLiteral(r.from, ctx) : null
+        return { rule: r, len: fl?.length ?? 0 }
       })
       .sort((a, b) => b.len - a.len)
     for (const { rule: r } of sorted) {
