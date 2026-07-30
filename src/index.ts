@@ -65,6 +65,7 @@ export type { LoadStrategy, MapLoader } from "./loader.js"
 // them via the main entry would break browser bundles. Node callers
 // (CLI, server tests) should import directly from `./loaders.node.js`.
 export { normaliseMap, bundledStrategy } from "./loaders.js"
+export { httpStrategy, type HttpStrategyOptions } from "./http-loader.js"
 
 export interface InterscriptConfig {
   /** Strategies consulted in order when loading a map. */
@@ -104,12 +105,53 @@ class InterscriptRuntime {
   }
 
   /**
+   * Async pre-load. Required when async strategies (HTTP) are configured
+   * and the map isn't already cached.
+   */
+  async loadMapAsync(systemCode: SystemCode): Promise<CompiledMap> {
+    const map = await this.loader.loadAsync(systemCode)
+    for (const dep of map.dependencies) {
+      try {
+        await this.loader.loadAsync(dep)
+      } catch (e) {
+        if (e instanceof MapNotFoundError) {
+          throw new DependencyMissingError(dep)
+        }
+        throw e
+      }
+    }
+    return map
+  }
+
+  /**
    * Transliterate `input` using `systemCode`. Loads the map on first use,
    * caches it.
    */
   transliterate(systemCode: SystemCode, input: string, stage?: string): string {
     try {
       const map = this.loadMap(systemCode)
+      const stageName = stage ?? this.defaultStage
+      return executeStage(map, stageName, input, this.loader)
+    } catch (e) {
+      if (e instanceof InterscriptError) throw e
+      throw new SystemConversionError(
+        `Transliteration failed for ${systemCode}: ${(e as Error).message}`,
+        { cause: e },
+      )
+    }
+  }
+
+  /**
+   * Async transliterate. Required when the configured strategies include
+   * async loaders (e.g. httpStrategy) and the map may not be cached.
+   */
+  async transliterateAsync(
+    systemCode: SystemCode,
+    input: string,
+    stage?: string,
+  ): Promise<string> {
+    try {
+      const map = await this.loadMapAsync(systemCode)
       const stageName = stage ?? this.defaultStage
       return executeStage(map, stageName, input, this.loader)
     } catch (e) {
@@ -167,9 +209,26 @@ export function transliterate(systemCode: SystemCode, input: string, stage?: str
   return runtime().transliterate(systemCode, input, stage)
 }
 
+/**
+ * Async transliterate. Use when async strategies (httpStrategy) are
+ * configured and the map may not be in the cache yet.
+ */
+export function transliterateAsync(
+  systemCode: SystemCode,
+  input: string,
+  stage?: string,
+): Promise<string> {
+  return runtime().transliterateAsync(systemCode, input, stage)
+}
+
 /** Public API — mirrors Interscript.load. */
 export function loadMap(systemCode: SystemCode): CompiledMap {
   return runtime().loadMap(systemCode)
+}
+
+/** Async version — needed when async strategies may be used. */
+export function loadMapAsync(systemCode: SystemCode): Promise<CompiledMap> {
+  return runtime().loadMapAsync(systemCode)
 }
 
 /** Public API — mirrors Interscript.detect. */
