@@ -185,15 +185,15 @@ const STDLIB_ALIASES: Readonly<Record<string, CompiledItem>> = Object.freeze({
   whitespace: { re: "\\s+", literal: " " },
   // JavaScript's \b only works for ASCII. Use Unicode-aware lookarounds
   // so that word boundaries work correctly for Cyrillic, Greek, etc.
-  boundary: { re: "(?:(?<!\\p{L})(?=\\p{L})|(?<=\\p{L})(?!\\p{L}))", literal: "" },
-  non_word_boundary: { re: "(?:(?<=\\p{L})(?=\\p{L})|(?<!\\p{L})(?!\\p{L}))", literal: "" },
+  boundary: { re: "(?:(?<![\\p{L}\\p{M}])(?=[\\p{L}\\p{M}])|(?<=[\\p{L}\\p{M}])(?![\\p{L}\\p{M}]))", literal: "" },
+  non_word_boundary: { re: "(?:(?<=[\\p{L}\\p{M}])(?=[\\p{L}\\p{M}])|(?<![\\p{L}\\p{M}])(?![\\p{L}\\p{M}]))", literal: "" },
   word: { re: "\\p{L}\\p{N}_", literal: "" },
   not_word: { re: "[^\\p{L}\\p{N}_]", literal: "" },
   alpha: { re: "\\p{L}", literal: "" },
   not_alpha: { re: "\\P{L}", literal: "" },
   digit: { re: "\\p{N}", literal: "" },
   not_digit: { re: "\\P{N}", literal: "" },
-  line_start: { re: "(?<=\\n|^)", literal: "" },
+  line_start: { re: "^", literal: "" },
   line_end: { re: "(?=\\n|$)", literal: "" },
   string_start: { re: "^", literal: "" },
   string_end: { re: "$", literal: "" },

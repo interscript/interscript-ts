@@ -27,9 +27,7 @@ const availableMaps: Set<string> = (() => {
 
 // Only 4 maps still differ from Ruby; all are documented edge cases.
 // See TODO.complete/42-parallel-rule-semantics.md for tracking.
-const KNOWN_PARTIAL = new Set([
-  "iso-mal-Mlym-Latn-15919-2001", // anusvara single-pass semantics
-])
+const KNOWN_PARTIAL = new Set<string>([]) // All diffs resolved!
 
 describe("parity with Ruby interpreter", () => {
   beforeAll(() => {
