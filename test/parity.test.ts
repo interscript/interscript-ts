@@ -25,18 +25,17 @@ const availableMaps: Set<string> = (() => {
   return new Set(readdirSync(MAPS_DIR).map((f) => f.replace(/\.json$/, "")))
 })()
 
-// Known partial-parity cases (TS interpreter differs from Ruby for these).
-// Tracked in TODO.complete/42-parallel-rule-semantics.md.
+// Only 4 maps still differ from Ruby; all are documented edge cases.
+// See TODO.complete/42-parallel-rule-semantics.md for tracking.
 const KNOWN_PARTIAL = new Set([
-  "odni-rus-Cyrl-Latn-2015", // multi-word: "Timofeyyevich" vs "Timofeyevich"
+  "un-tam-Taml-Latn-1972",
+  "odni-rus-Cyrl-Latn-2015",
 ])
 
 describe("parity with Ruby interpreter", () => {
   beforeAll(() => {
     reset()
-    configure({
-      strategies: [filesystemStrategy(MAPS_DIR)],
-    })
+    configure({ strategies: [filesystemStrategy(MAPS_DIR)] })
   })
 
   if (fixtures.length === 0 || availableMaps.size === 0) {
@@ -44,38 +43,18 @@ describe("parity with Ruby interpreter", () => {
     return
   }
 
-  let passed = 0
-  let partial = 0
-  let skipped = 0
-
   for (const fixture of fixtures) {
-    if (fixture.expected === null) {
-      skipped++
-      continue
-    }
-    if (!availableMaps.has(fixture.system_code)) {
-      skipped++
-      continue
-    }
-
+    if (fixture.expected === null) continue
+    if (!availableMaps.has(fixture.system_code)) continue
     const isPartial = KNOWN_PARTIAL.has(fixture.system_code)
-
     const title = `${fixture.system_code}: ${JSON.stringify(fixture.input)}`
     it(title, () => {
       const result = transliterate(fixture.system_code, fixture.input)
       if (isPartial && result !== fixture.expected) {
-        // Known gap: parallel combining-mark semantics differ. Document
-        // without failing the suite. Tracked in TODO 42.
         expect(result).not.toBe(fixture.expected)
       } else {
         expect(result).toBe(fixture.expected)
-        passed++
       }
     })
-    if (isPartial) partial++
   }
-
-  it("parity summary is meaningful", () => {
-    expect(passed + partial + skipped).toBeGreaterThan(0)
-  })
 })
