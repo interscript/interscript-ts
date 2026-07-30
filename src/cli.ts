@@ -12,7 +12,8 @@
 import { parseArgs } from "node:util"
 import { readFileSync, writeFileSync, existsSync } from "node:fs"
 import { resolve } from "node:path"
-import { configure, reset, transliterate, filesystemStrategy } from "./index.js"
+import { configure, reset, transliterate } from "./index.js"
+import { filesystemStrategy } from "./loaders.node.js"
 
 const { values } = parseArgs({
   options: {

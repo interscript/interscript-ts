@@ -3,7 +3,7 @@ import { readFileSync, existsSync, readdirSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, resolve } from "node:path"
 import { configure, reset, transliterate } from "../src/index.js"
-import { filesystemStrategy } from "../src/loaders.js"
+import { filesystemStrategy } from "../src/loaders.node.js"
 
 interface ParityFixture {
   system_code: string

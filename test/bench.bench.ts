@@ -14,7 +14,8 @@ import {
   levenshtein,
   regexpEscape,
 } from "../src/stdlib.js"
-import { configure, reset, transliterate, filesystemStrategy } from "../src/index.js"
+import { configure, reset, transliterate } from "../src/index.js"
+import { filesystemStrategy } from "../src/loaders.node.js"
 import { resolve } from "node:path"
 
 const MAPS_DIR = resolve(process.cwd(), "test/fixtures/maps")

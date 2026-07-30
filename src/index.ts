@@ -60,7 +60,11 @@ export type {
   StageItem,
 } from "./types.js"
 export type { LoadStrategy, MapLoader } from "./loader.js"
-export { normaliseMap, filesystemStrategy, bundledStrategy } from "./loaders.js"
+// Only re-export browser-safe loaders from the main entry. Filesystem
+// strategies live in `./loaders.node.ts` and pull in `node:fs`; importing
+// them via the main entry would break browser bundles. Node callers
+// (CLI, server tests) should import directly from `./loaders.node.js`.
+export { normaliseMap, bundledStrategy } from "./loaders.js"
 
 export interface InterscriptConfig {
   /** Strategies consulted in order when loading a map. */

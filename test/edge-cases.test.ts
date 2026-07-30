@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeAll } from "vitest"
 import { configure, reset, transliterate } from "../src/index.js"
-import { filesystemStrategy } from "../src/loaders.js"
+import { filesystemStrategy } from "../src/loaders.node.js"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { dirname } from "node:path"

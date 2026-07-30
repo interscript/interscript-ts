@@ -8,7 +8,7 @@ import { readFileSync, readdirSync } from "node:fs"
 import { resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 import { configure, reset, transliterate } from "../src/index.js"
-import { filesystemStrategy } from "../src/loaders.js"
+import { filesystemStrategy } from "../src/loaders.node.js"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const FIXTURES = resolve(HERE, "../test/fixtures/full-parity.json")
