@@ -71,21 +71,22 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
   },
 
   parallel: (rule, ctx) => {
-    // Parallel rule groups: apply all sub-rules simultaneously via trie.
-    // Direct port of Ruby's Interscript::Stdlib.parallel_replace_compile_tree
-    // + parallel_replace_tree. Longest match wins at each position.
-    //
-    // Constraints (matching Ruby):
-    //   - All inner rules must be Sub (no nesting, no run, no funcall)
-    //   - No before/after/notBefore/notAfter (would break single-pass)
-    //   - from/to must compile to literal strings (no regex/captures)
-    // Anything else falls back to sequential application with a warning.
-    const pairs: [string, string][] = []
-    let needsFallback = false
+    // Parallel rule groups: Ruby applies ALL rules in a single pass
+    // (longest-match-wins). We approximate this by sorting rules by
+    // from-length descending, then applying sequentially. This ensures
+    // multi-char rules (like `εί → í`) fire before single-char rules
+    // (like `ε → e`), matching Ruby's parallel semantics.
+    const triePairs: [string, string][] = []
+    const constrainedRules: SubRule[] = []
+
     for (const inner of rule.rules) {
-      if (inner.kind !== "sub" || inner.before || inner.after || inner.notBefore || inner.notAfter || !inner.from) {
-        needsFallback = true
-        break
+      if (inner.kind !== "sub" || !inner.from) {
+        constrainedRules.push(inner as SubRule)
+        continue
+      }
+      if (inner.before || inner.after || inner.notBefore || inner.notAfter) {
+        constrainedRules.push(inner)
+        continue
       }
       const toItem = inner.to
       const toLit = !toItem
@@ -94,25 +95,35 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
           ? null
           : compileToLiteral(toItem, ctx)
       if (toLit === null) {
-        needsFallback = true
-        break
+        constrainedRules.push(inner)
+        continue
       }
-      // Expand `any` items: each alternative becomes its own (from, to) pair.
       const fromAlts = expandFromLiterals(inner.from, ctx)
       if (fromAlts === null) {
-        needsFallback = true
-        break
+        constrainedRules.push(inner)
+        continue
       }
       for (const fromLit of fromAlts) {
-        pairs.push([fromLit, toLit])
+        triePairs.push([fromLit, toLit])
       }
     }
-    if (needsFallback) {
-      for (const fallback of rule.rules) executeRule(fallback, ctx)
-      return
+
+    if (triePairs.length > 0) {
+      const tree = compileParallelTree(triePairs)
+      ctx.current = parallelReplaceTree(ctx.current, tree)
     }
-    const tree = compileParallelTree(pairs)
-    ctx.current = parallelReplaceTree(ctx.current, tree)
+
+    // Apply constrained rules AFTER the trie pass, sorted by from-length
+    // descending so longer patterns fire first.
+    const sorted = constrainedRules
+      .map((r) => {
+        const fromLit = r.from ? compileToLiteral(r.from, ctx) : null
+        return { rule: r, len: fromLit?.length ?? 0 }
+      })
+      .sort((a, b) => b.len - a.len)
+    for (const { rule: r } of sorted) {
+      executeSubRule(r, ctx)
+    }
   },
 
   sequential: (rule, ctx) => {
