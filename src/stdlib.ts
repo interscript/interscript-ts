@@ -168,64 +168,36 @@ export function decompose(input: string): string {
 }
 
 /**
- * Single-pass parallel replace: at each position, try the trie AND
- * any constrained regex matchers. Longest match wins. Ties go to the
- * trie (matching Ruby's tree-first-then-megaregexp behaviour).
+ * Megaregexp parallel replace — Ruby's fallback for parallel blocks
+ * where any rule has `before`/`after`/`not_before`/`not_after` constraints.
  *
- * This is the correct way to handle parallel rules that mix constrained
- * and unconstrained sub rules in a single pass.
+ * Mirrors `Interscript::Stdlib.parallel_regexp_compile` + `parallel_regexp_gsub`:
+ * all rules join into one alternation `(?<g0>p0)|(?<g1>p1)|...` and a single
+ * gsub decides which alternative matched via the named group. Rule order is
+ * pre-sorted by the caller (longest `max_length` first, declaration order
+ * as tiebreaker — matching Ruby's `deterministic_sort_by_max_length`).
+ *
+ * Onigmo and V8 share alternation semantics: at each scan position,
+ * alternatives are tried in declaration order and the first match wins.
  */
-export interface ConstrainedMatcher {
-  fromLength: number
-  test: (s: string, pos: number) => { replacement: string; matchLength: number } | null
+export interface MegaregexpRule {
+  readonly pattern: string
+  readonly replace: (match: string, groups: (string | undefined)[]) => string
 }
 
-export function parallelSinglePass(
-  input: string,
-  tree: ParallelTrieNode | null,
-  matchers: ConstrainedMatcher[],
-): string {
-  let out = ""
-  const len = input.length
-  let i = 0
-
-  while (i < len) {
-    let bestLen = 0
-    let bestReplacement: string | null = null
-
-    // Try the trie (unconstrained rules)
-    if (tree) {
-      let branch = tree
-      for (let j = 0; i + j < len; j++) {
-        const code = input.charCodeAt(i + j)
-        const next = branch.children.get(code)
-        if (!next) break
-        branch = next
-        if (branch.match !== null) {
-          bestLen = j + 1
-          bestReplacement = branch.match
-        }
+export function parallelMegaregexp(input: string, rules: readonly MegaregexpRule[]): string {
+  if (rules.length === 0) return input
+  const parts = rules.map((r, i) => `(?<__r${i}>${r.pattern})`)
+  const re = new RegExp(parts.join("|"), "gmu")
+  return input.replace(re, (...args: unknown[]) => {
+    const groups = args[args.length - 1] as Record<string, string | undefined>
+    for (let i = 0; i < rules.length; i++) {
+      if (groups[`__r${i}`] !== undefined) {
+        const match = args[0] as string
+        const captures = (args.slice(1, -2) as (string | undefined)[])
+        return rules[i]!.replace(match, captures)
       }
     }
-
-    // Try each constrained matcher
-    for (const matcher of matchers) {
-      const result = matcher.test(input, i)
-      if (result !== null) {
-        if (result.matchLength > bestLen) {
-          bestLen = result.matchLength
-          bestReplacement = result.replacement
-        }
-      }
-    }
-
-    if (bestReplacement !== null && bestLen > 0) {
-      out += bestReplacement
-      i += bestLen
-    } else {
-      out += input[i]
-      i += 1
-    }
-  }
-  return out
+    return args[0] as string
+  })
 }
