@@ -264,21 +264,24 @@ const STDLIB_ALIASES: Readonly<Record<string, CompiledItem>> = Object.freeze({
   none: { re: "", literal: "" },
   space: { re: " ", literal: " " },
   whitespace: { re: "\\s+", literal: " " },
-  // JavaScript's \b/\w/\W are ASCII-only, but Ruby-with-Onigmo at the
-  // default settings used by Interscript is similarly ASCII-only. We
-  // diverge from Ruby here and use Unicode-aware forms because most
-  // Interscript maps rely on \b working at non-Latin boundaries (e.g.
-  // Cyrillic, Arabic, Devanagari). The single regression is the
-  // Chechen palochka map, which depends on Cyrillic being treated
-  // as \W; that map is tracked in TODO.complete/42.
+  // Boundary is implemented as Unicode-aware lookarounds so that
+  // Cyrillic, Arabic, Devanagari etc. get correct word boundaries
+  // (66 maps rely on this). Ruby's \b is ASCII-only by default, but
+  // most maps work because their boundary usage is at start-of-string
+  // or after whitespace — cases where ASCII \b happens to coincide
+  // with the Unicode form.
   boundary: { re: "(?:(?<![\\p{L}\\p{M}])(?=[\\p{L}\\p{M}])|(?<=[\\p{L}\\p{M}])(?![\\p{L}\\p{M}]))", literal: "" },
   non_word_boundary: { re: "(?:(?<=[\\p{L}\\p{M}])(?=[\\p{L}\\p{M}])|(?<![\\p{L}\\p{M}])(?![\\p{L}\\p{M}]))", literal: "" },
-  word: { re: "[\\p{L}\\p{N}_]", literal: "" },
-  not_word: { re: "[^\\p{L}\\p{N}_]", literal: "" },
-  alpha: { re: "\\p{L}", literal: "" },
-  not_alpha: { re: "\\P{L}", literal: "" },
-  digit: { re: "\\p{N}", literal: "" },
-  not_digit: { re: "\\P{N}", literal: "" },
+  // word / not_word mirror Ruby's default ASCII-only \w / \W. Only one
+  // map (odni-che-Cyrl-Latn-2015) uses these aliases — its palochka
+  // rule depends on Cyrillic being treated as non-word. ASCII-only
+  // here is harmless to the 65+ maps that use boundary instead.
+  word: { re: "[A-Za-z0-9_]", literal: "" },
+  not_word: { re: "[^A-Za-z0-9_]", literal: "" },
+  alpha: { re: "[a-zA-Z]", literal: "" },
+  not_alpha: { re: "[^a-zA-Z]", literal: "" },
+  digit: { re: "[0-9]", literal: "" },
+  not_digit: { re: "[^0-9]", literal: "" },
   line_start: { re: "^", literal: "" },
   line_end: { re: "(?=\\n|$)", literal: "" },
   string_start: { re: "^", literal: "" },

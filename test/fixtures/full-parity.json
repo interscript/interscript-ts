@@ -20395,6 +20395,258 @@
       "ruby_actual": "’asĭmera"
     },
     {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Aшгабат",
+      "expected": "Ashgabat",
+      "ruby_actual": "Ashgabat"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Лебап",
+      "expected": "Lebap",
+      "ruby_actual": "Lebap"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Ныязов",
+      "expected": "Nyyazov",
+      "ruby_actual": "Nyyazov"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Тагта",
+      "expected": "Tagta",
+      "ruby_actual": "Tagta"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Дашховуз",
+      "expected": "Dashkhovuz",
+      "ruby_actual": "Dashkhovuz"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Небитдаг",
+      "expected": "Nebitdag",
+      "ruby_actual": "Nebitdag"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Ёлөтен",
+      "expected": "Yolöten",
+      "ruby_actual": "Yolöten"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Теҗен",
+      "expected": "Tejen",
+      "ruby_actual": "Tejen"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Газанҗык",
+      "expected": "Gazanjyk",
+      "ruby_actual": "Gazanjyk"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Керки",
+      "expected": "Kerki",
+      "ruby_actual": "Kerki"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Бүзмейин",
+      "expected": "Büzmeyin",
+      "ruby_actual": "Büzmeyin"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Кака",
+      "expected": "Kaka",
+      "ruby_actual": "Kaka"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Челекен",
+      "expected": "Cheleken",
+      "ruby_actual": "Cheleken"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Түркменбашы",
+      "expected": "Türkmenbashy",
+      "ruby_actual": "Türkmenbashy"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Чаршаңңы",
+      "expected": "Charshangngy",
+      "ruby_actual": "Charshangngy"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Мургап",
+      "expected": "Murgap",
+      "ruby_actual": "Murgap"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Мары",
+      "expected": "Mary",
+      "ruby_actual": "Mary"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Сарахс",
+      "expected": "Sarakhs",
+      "ruby_actual": "Sarakhs"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Фарап",
+      "expected": "Farap",
+      "ruby_actual": "Farap"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Эсенгулы",
+      "expected": "Esenguly",
+      "ruby_actual": "Esenguly"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
+      "input": "Әнев",
+      "expected": "Änev",
+      "ruby_actual": "Änev"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Aшгабат",
+      "expected": "Aşgabat",
+      "ruby_actual": "Aşgabat"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Лебап",
+      "expected": "Lebap",
+      "ruby_actual": "Lebap"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Ныязов",
+      "expected": "Nyýazow",
+      "ruby_actual": "Nyýazow"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Тагта",
+      "expected": "Tagta",
+      "ruby_actual": "Tagta"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Дашховуз",
+      "expected": "Daşhowuz",
+      "ruby_actual": "Daşhowuz"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Небитдаг",
+      "expected": "Nebitdag",
+      "ruby_actual": "Nebitdag"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Ёлөтен",
+      "expected": "Ýolöten",
+      "ruby_actual": "Ýolöten"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Теҗен",
+      "expected": "Tejen",
+      "ruby_actual": "Tejen"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Газанҗык",
+      "expected": "Gazanjyk",
+      "ruby_actual": "Gazanjyk"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Керки",
+      "expected": "Kerki",
+      "ruby_actual": "Kerki"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Бүзмейин",
+      "expected": "Büzmeýin",
+      "ruby_actual": "Büzmeýin"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Кака",
+      "expected": "Kaka",
+      "ruby_actual": "Kaka"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Челекен",
+      "expected": "Çeleken",
+      "ruby_actual": "Çeleken"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Түркменбашы",
+      "expected": "Türkmenbaşy",
+      "ruby_actual": "Türkmenbaşy"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Чаршаңңы",
+      "expected": "Çarşaňňy",
+      "ruby_actual": "Çarşaňňy"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Мургап",
+      "expected": "Murgap",
+      "ruby_actual": "Murgap"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Мары",
+      "expected": "Mary",
+      "ruby_actual": "Mary"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Сарахс",
+      "expected": "Sarahs",
+      "ruby_actual": "Sarahs"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Фарап",
+      "expected": "Farap",
+      "ruby_actual": "Farap"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Эсенгулы",
+      "expected": "Esenguly",
+      "ruby_actual": "Esenguly"
+    },
+    {
+      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
+      "input": "Әнев",
+      "expected": "Änew",
+      "ruby_actual": "Änew"
+    },
+    {
       "system_code": "bgnpcgn-ukr-Cyrl-Latn-1965",
       "input": "Авдіївська Міськрада",
       "expected": "Avdiyivs’ka Mis’krada",
@@ -31834,7 +32086,7 @@
       "system_code": "iso-mal-Mlym-Latn-15919-2001",
       "input": "വിവാദങ്ങളിൽ മാപ്പില്ല, ആദ്യമായി ഐപിഎൽ കമന്ററിക്കില്ലാതെ മ‍ഞ്ജരേക്കര്‍; പുറത്ത് തന്നെ",
       "expected": "vaivaādaṅṅaḷai:la maāppailla, ādyamaāyai aipaie:la kamanṟaṟaikkaillaātae mañjaraēkkaraŭ; pauṟattaŭ tannae",
-      "ruby_actual": "vaivaādaṅṅaḷai:la maāppailla, ādyamaāyai aipaie:la kamanṟaṟaikkaillaātae mañjaraēkkar; pauṟattaŭ tannae"
+      "ruby_actual": "vaivaādaṅṅaḷai:la maāppailla, ādyamaāyai aipaie:la kamanṟaṟaikkaillaātae mañjaraēkkaraŭ; pauṟattaŭ tannae"
     },
     {
       "system_code": "iso-mal-Mlym-Latn-15919-2001",
@@ -31846,7 +32098,7 @@
       "system_code": "iso-mal-Mlym-Latn-15919-2001",
       "input": "വഴിനീളെ രോഷം; യൂത്ത്‌ കോണ്‍ഗ്രസുകാരന്റെ  കയ്യൊടിഞ്ഞു, കൈവീശികാട്ടി ജലീൽ",
       "expected": "vaḻainaīḷae raōṣam; yaūttaŭ kaōṇaŭgrasaukaāranṟae  kayyaoṭaiññau, kaaivaīśaikaāṭṭai jalaī:la",
-      "ruby_actual": "vaḻainaīḷae raōṣam; yaūtt kaōṇgrasaukaāranṟae  kayyaoṭaiññau, kaaivaīśaikaāṭṭai jalaī:la"
+      "ruby_actual": "vaḻainaīḷae raōṣam; yaūttaŭ kaōṇaŭgrasaukaāranṟae  kayyaoṭaiññau, kaaivaīśaikaāṭṭai jalaī:la"
     },
     {
       "system_code": "iso-mal-Mlym-Latn-15919-2001",
@@ -31870,7 +32122,7 @@
       "system_code": "iso-mal-Mlym-Latn-15919-2001",
       "input": "‘എല്ലാം ഫെയ്‌സ്ബുക്കില്‍ പറയുമെന്നു ജലീല്‍; കനത്ത സുരക്ഷയില്‍ യാത്ര, കരിങ്കൊടി",
       "expected": "‘ellaām phaeyaŭsbaukkailaŭ paṟayaumaennau jalaīlaŭ; kanatta saurakṣayailaŭ yaātra, karaiṅkaoṭai",
-      "ruby_actual": "‘ellaām phaeysbaukkail paṟayaumaennau jalaīl; kanatta saurakṣayail yaātra, karaiṅkaoṭai"
+      "ruby_actual": "‘ellaām phaeyaŭsbaukkailaŭ paṟayaumaennau jalaīlaŭ; kanatta saurakṣayailaŭ yaātra, karaiṅkaoṭai"
     },
     {
       "system_code": "iso-mal-Mlym-Latn-15919-2001",
@@ -45013,216 +45265,5 @@
       "ruby_actual": "Nan-i Kao-erh-fu Ch’iu-ch’ang"
     }
   ],
-  "skipped": [
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Aшгабат",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Лебап",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Ныязов",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Тагта",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Дашховуз",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Небитдаг",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Ёлөтен",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Теҗен",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Газанҗык",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Керки",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Бүзмейин",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Кака",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Челекен",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Түркменбашы",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Чаршаңңы",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Мургап",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Мары",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Сарахс",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Фарап",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Эсенгулы",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1979",
-      "input": "Әнев",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1979"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Aшгабат",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Лебап",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Ныязов",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Тагта",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Дашховуз",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Небитдаг",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Ёлөтен",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Теҗен",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Газанҗык",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Керки",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Бүзмейин",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Кака",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Челекен",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Түркменбашы",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Чаршаңңы",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Мургап",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Мары",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Сарахс",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Фарап",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Эсенгулы",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    },
-    {
-      "system_code": "bgnpcgn-tuk-Cyrl-Latn-1993",
-      "input": "Әнев",
-      "error": "Couldn't locate bgnpcgn-tuk-Cyrl-Latn-1993"
-    }
-  ]
+  "skipped": []
 }
