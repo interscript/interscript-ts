@@ -56,8 +56,10 @@ export function compileItem(item: Item, ctx: ExecutionContext): CompiledItem {
     }
 
     case "group": {
-      const parts = item.items.map((i) => compileItem(i, ctx).re)
-      return { re: `(?:${parts.join("")})`, literal: "" }
+      const compiled = item.items.map((i) => compileItem(i, ctx))
+      const re = compiled.map((c) => c.re).join("")
+      const literal = compiled.map((c) => c.literal).join("")
+      return { re: `(?:${re})`, literal }
     }
 
     case "repeat": {

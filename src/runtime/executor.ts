@@ -136,7 +136,7 @@ function executeSubRule(rule: SubRule, ctx: ExecutionContext): void {
   const patternParts: string[] = []
   if (before) patternParts.push(`(?<=${before})`)
   if (notBefore) patternParts.push(`(?<!${notBefore})`)
-  patternParts.push(`(${from.re})`)
+  patternParts.push(from.re)
   if (after) patternParts.push(`(?=${after})`)
   if (notAfter) patternParts.push(`(?!${notAfter})`)
 
@@ -150,10 +150,31 @@ function executeSubRule(rule: SubRule, ctx: ExecutionContext): void {
   }
 
   const replacement = buildReplacement(rule.to, ctx)
-  ctx.current =
+  ctx.current = ctx.current.replace(
+    re,
     typeof replacement === "string"
-      ? ctx.current.replace(re, replacement)
-      : ctx.current.replace(re, replacement as (substring: string, ...args: unknown[]) => string)
+      ? (() => {
+          // Use function to avoid $' $` $$ special-meaning bugs in
+          // String.replace replacement strings.
+          const tmpl = replacement
+          return (match: string, ...args: unknown[]) =>
+            resolveTemplate(tmpl, match, args as string[])
+        })()
+      : replacement,
+  )
+}
+
+/**
+ * Resolve a replacement template against a regex match.
+ *
+ * Handles `$1`, `$2` capture-group references. Does NOT interpret
+ * `$'`, `` $` ``, `$$` — those are literal characters in our templates.
+ */
+function resolveTemplate(template: string, match: string, groups: string[]): string {
+  return template.replace(/\$(\d+)/g, (_, n: string) => {
+    const idx = parseInt(n, 10)
+    return groups[idx - 1] ?? match
+  })
 }
 
 /**
