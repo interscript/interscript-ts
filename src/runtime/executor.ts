@@ -10,7 +10,7 @@
 
 import type { Item, Rule, SubRule } from "../types.js"
 import type { ExecutionContext } from "./context.js"
-import { compileItem, compileToLiteral } from "./compile-item.js"
+import { compileItem, compileToLiteral, expandFromLiterals } from "./compile-item.js"
 import { MapLogicError } from "../errors.js"
 import {
   compileParallelTree,
@@ -81,33 +81,35 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
     //   - from/to must compile to literal strings (no regex/captures)
     // Anything else falls back to sequential application with a warning.
     const pairs: [string, string][] = []
+    let needsFallback = false
     for (const inner of rule.rules) {
-      if (inner.kind !== "sub") {
-        // Non-Sub rule in parallel block: fall back to sequential.
-        for (const fallback of rule.rules) executeRule(fallback, ctx)
-        return
+      if (inner.kind !== "sub" || inner.before || inner.after || inner.notBefore || inner.notAfter || !inner.from) {
+        needsFallback = true
+        break
       }
-      if (inner.before || inner.after || inner.notBefore || inner.notAfter) {
-        for (const fallback of rule.rules) executeRule(fallback, ctx)
-        return
-      }
-      if (!inner.from) {
-        for (const fallback of rule.rules) executeRule(fallback, ctx)
-        return
-      }
-      const fromLit = compileToLiteral(inner.from, ctx)
       const toItem = inner.to
       const toLit = !toItem
         ? ""
         : toItem.kind === "funcall_inline"
           ? null
           : compileToLiteral(toItem, ctx)
-      if (fromLit === null || toLit === null) {
-        // Couldn't compile to literal (captures, regex); fall back.
-        for (const fallback of rule.rules) executeRule(fallback, ctx)
-        return
+      if (toLit === null) {
+        needsFallback = true
+        break
       }
-      pairs.push([fromLit, toLit])
+      // Expand `any` items: each alternative becomes its own (from, to) pair.
+      const fromAlts = expandFromLiterals(inner.from, ctx)
+      if (fromAlts === null) {
+        needsFallback = true
+        break
+      }
+      for (const fromLit of fromAlts) {
+        pairs.push([fromLit, toLit])
+      }
+    }
+    if (needsFallback) {
+      for (const fallback of rule.rules) executeRule(fallback, ctx)
+      return
     }
     const tree = compileParallelTree(pairs)
     ctx.current = parallelReplaceTree(ctx.current, tree)

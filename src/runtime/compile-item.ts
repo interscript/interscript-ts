@@ -123,6 +123,58 @@ export function compileToLiteral(item: Item, ctx: ExecutionContext): string | nu
 }
 
 /**
+ * Expand a `from` item into ALL possible literal strings for parallel
+ * replace. `any` items produce one entry per alternative. Other items
+ * produce a single entry (or null if not literal).
+ *
+ * This is the multi-valued counterpart of `compileToLiteral`.
+ */
+export function expandFromLiterals(item: Item, ctx: ExecutionContext): string[] | null {
+  switch (item.kind) {
+    case "string":
+      return [item.value]
+
+    case "alias": {
+      const stdlib = STDLIB_ALIASES[item.name]
+      if (stdlib) return null
+      const resolved = ctx.resolveAlias(item.name)
+      if (!resolved) return null
+      return expandFromLiterals(resolved, ctx)
+    }
+
+    case "any": {
+      const out: string[] = []
+      for (const child of item.of) {
+        const lit = expandFromLiterals(child, ctx)
+        if (lit === null) return null
+        out.push(...lit)
+      }
+      return out
+    }
+
+    case "group": {
+      // Cartesian product of all children's alternatives.
+      let combos: string[] = [""]
+      for (const child of item.items) {
+        const childAlts = expandFromLiterals(child, ctx)
+        if (childAlts === null) return null
+        const next: string[] = []
+        for (const prefix of combos) {
+          for (const suffix of childAlts) {
+            next.push(prefix + suffix)
+          }
+        }
+        combos = next
+      }
+      return combos
+    }
+
+    default:
+      return null
+  }
+}
+
+/**
  * Stdlib alias table — single-character aliases like `:word`, `:boundary`.
  * Mirrors Interscript::Stdlib::ALIASES in Ruby.
  */
