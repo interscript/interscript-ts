@@ -65,7 +65,8 @@ export function compileItem(item: Item, ctx: ExecutionContext): CompiledItem {
     case "repeat": {
       const inner = compileItem(item.item, ctx).re
       const { min, max } = item
-      const quant = max === Infinity ? (min === 0 ? "*" : "+") : `{${min},${max}}`
+      const maxVal = max === null ? Infinity : max
+      const quant = maxVal === Infinity ? (min === 0 ? "*" : "+") : `{${min},${maxVal}}`
       return { re: `(?:${inner})${quant}`, literal: "" }
     }
 

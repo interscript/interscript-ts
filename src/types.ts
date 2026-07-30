@@ -179,7 +179,7 @@ export interface RepeatItem {
   readonly kind: "repeat"
   readonly item: Item
   readonly min: number
-  readonly max: number
+  readonly max: number | null
 }
 
 export interface StageItem {
