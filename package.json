@@ -11,6 +11,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./loaders.node": {
+      "types": "./dist/loaders.node.d.ts",
+      "import": "./dist/loaders.node.js"
+    },
     "./cli": "./dist/cli.js",
     "./package.json": "./package.json"
   },
@@ -62,6 +66,7 @@
     "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.0",
+    "playwright": "^1.62.0",
     "prettier": "^3.9.0",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.65.0",
