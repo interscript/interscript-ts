@@ -107,12 +107,26 @@ class InterscriptRuntime {
   /**
    * Async pre-load. Required when async strategies (HTTP) are configured
    * and the map isn't already cached.
+   *
+   * Recursively loads all transitive dependencies so the synchronous
+   * execution path can resolve deps without awaiting.
    */
   async loadMapAsync(systemCode: SystemCode): Promise<CompiledMap> {
     const map = await this.loader.loadAsync(systemCode)
-    for (const dep of map.dependencies) {
+    // Recursively load every transitive dep. The synchronous executor
+    // calls loader.load() during execution and can't await async
+    // strategies — so we preload the entire closure upfront.
+    const seen = new Set<SystemCode>()
+    const queue: SystemCode[] = [...map.dependencies]
+    while (queue.length > 0) {
+      const dep = queue.shift()!
+      if (seen.has(dep)) continue
+      seen.add(dep)
       try {
-        await this.loader.loadAsync(dep)
+        const depMap = await this.loader.loadAsync(dep)
+        for (const d of depMap.dependencies) {
+          if (!seen.has(d)) queue.push(d)
+        }
       } catch (e) {
         if (e instanceof MapNotFoundError) {
           throw new DependencyMissingError(dep)

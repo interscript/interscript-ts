@@ -24,6 +24,7 @@ import {
   compose,
   decompose,
 } from "../stdlib.js"
+import { rababa, rababaReverse } from "../stdlib/ml.js"
 
 type RuleKind = Rule["kind"]
 type RuleExecutorFor<K extends RuleKind> = (

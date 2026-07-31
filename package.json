@@ -11,6 +11,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./ml": {
+      "types": "./dist/ml/index.d.ts",
+      "import": "./dist/ml/index.js"
+    },
     "./loaders.node": {
       "types": "./dist/loaders.node.d.ts",
       "import": "./dist/loaders.node.js"
