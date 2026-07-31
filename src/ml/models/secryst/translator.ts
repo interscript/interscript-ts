@@ -15,14 +15,15 @@
  *   4. Decode output IDs → string
  */
 
-import type { InferenceSession, Model, ModelArtifacts, ModelKind, Tensor } from "../../types.js"
+import type { InferenceSession, MLModel, ModelArtifacts, ModelKind, Tensor } from "../../types.js"
 import type { Vocab } from "./vocab.js"
 import { buildVocabs, parseVocabYaml } from "./vocab.js"
 import { buildMasks } from "./masks.js"
 
-export interface SecrystModel extends Model {
+export interface SecrystModel extends MLModel {
   readonly kind: ModelKind
   translate(text: string, maxSeqLength?: number): Promise<string>
+  transform(input: string): Promise<string>
   dispose(): Promise<void>
 }
 
@@ -101,6 +102,16 @@ class SecrystModelImpl implements SecrystModel {
 
     // Drop the <sos> and return decoded text
     return this.targetVocab.decodeSequence(tgtIds.slice(1))
+  }
+
+  /** Unified MLModel interface — processes line by line (matching Ruby). */
+  async transform(input: string): Promise<string> {
+    const lines = input.split("\n")
+    const results: string[] = []
+    for (const line of lines) {
+      results.push(await this.translate(line))
+    }
+    return results.join("\n")
   }
 
   async dispose(): Promise<void> {

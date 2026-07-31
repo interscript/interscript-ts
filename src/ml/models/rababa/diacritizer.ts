@@ -15,6 +15,7 @@
 import type {
   InferenceSession,
   Model,
+  MLModel,
   ModelArtifacts,
   ModelKind,
   Tensor,
@@ -37,9 +38,10 @@ const DEFAULT_CONFIG: RababaConfig = {
   textCleaner: "valid_arabic_cleaners",
 }
 
-export interface RababaModel extends Model {
+export interface RababaModel extends MLModel {
   readonly kind: ModelKind
   diacritize(text: string): Promise<string>
+  transform(input: string): Promise<string>
   dispose(): Promise<void>
 }
 
@@ -93,6 +95,11 @@ class RababaModelImpl implements RababaModel {
     const preds = argmaxBatch(out, sequence.length)
     const combined = combineTextAndHaraqat(sequence, preds)
     return reconcileStrings(cleaned, combined)
+  }
+
+  /** Unified MLModel interface — delegates to diacritize. */
+  async transform(input: string): Promise<string> {
+    return this.diacritize(input)
   }
 
   /**

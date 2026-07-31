@@ -71,12 +71,35 @@ export interface Model {
 }
 
 /**
+ * Universal text-transform interface. Every ML model — rababa,
+ * secryst, ByT5, or future kinds — implements this single method.
+ *
+ * The interpreter calls `transform(input)` for ANY async funcall,
+ * regardless of model kind. No per-model branching in the interpreter
+ * (OCP: adding a new model kind doesn't change the interpreter).
+ *
+ * MECE: the interface knows about text transformation. It does NOT
+ * know about Arabic diacritization, Thai transliteration, or any
+ * domain-specific concept.
+ */
+export interface MLModel extends Model {
+  /**
+   * Transform input text into output text.
+   *
+   * Rababa: undiacritized Arabic → diacritized Arabic
+   * Secryst: source script → target script
+   * Future models: any text-to-text transformation
+   */
+  transform(input: string): Promise<string>
+}
+
+/**
  * Factory for a model. Given a provisioned bundle (session + auxiliary
  * data), return a Model implementation.
  *
  * Each kind registers exactly one factory (MECE).
  */
-export type ModelFactory = (params: ModelLoadParams) => Promise<Model>
+export type ModelFactory = (params: ModelLoadParams) => Promise<MLModel>
 
 export interface ModelLoadParams {
   readonly session: InferenceSession

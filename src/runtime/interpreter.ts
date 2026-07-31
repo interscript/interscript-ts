@@ -136,25 +136,22 @@ async function executeFuncallAsync(
   rule: { readonly name: string; readonly kwargs?: Readonly<Record<string, unknown>> },
   ctx: ExecutionContext,
 ): Promise<void> {
-  // Try ML functions first (rababa, secryst)
-  if (rule.name === "rababa") {
-    const { rababa } = await import("../stdlib/ml.js")
-    ctx.current = await rababa(ctx.current, rule.kwargs ?? {})
-    return
-  }
-  if (rule.name === "secryst") {
+  // Unified ML dispatch: any function in ASYNC_FUNCTIONS is an ML model.
+  // The interpreter doesn't know whether it's rababa, secryst, or a
+  // future model — it just calls MLModel.transform().
+  //
+  // OCP: adding a new ML function = registering it in ASYNC_FUNCTIONS
+  // + having its model implement MLModel.transform. This function
+  // never changes.
+  if (ASYNC_FUNCTIONS.has(rule.name)) {
     const { loadModel } = await import("../ml/index.js")
-    const model = await loadModel({ kind: "secryst", id: (rule.kwargs?.model as string) ?? "default" }) as import("../ml/models/secryst/translator.js").SecrystModel
-    // Secryst processes line by line (matching Ruby behavior)
-    const lines = ctx.current.split("\n")
-    const results: string[] = []
-    for (const line of lines) {
-      results.push(await model.translate(line))
-    }
-    ctx.current = results.join("\n")
+    const modelId = (rule.kwargs?.config ?? rule.kwargs?.model ?? "default") as string
+    const model = await loadModel({ kind: rule.name as "rababa" | "secryst", id: modelId })
+    // MLModel.transform handles everything: diacritization, transliteration,
+    // line-by-line processing, etc. The interpreter is domain-agnostic.
+    ctx.current = await model.transform(ctx.current)
     return
   }
   // Fall back to the sync funcall executor for all other functions.
-  // Find the funcall rule in the original rule set and delegate.
   executeRule({ kind: "funcall", name: rule.name, kwargs: rule.kwargs } as Rule, ctx)
 }

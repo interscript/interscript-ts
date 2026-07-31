@@ -10,7 +10,7 @@
  *   reused by every model.
  */
 
-import type { Model, ModelFactory, ModelKind, ModelRef } from "./types.js"
+import type { MLModel, ModelFactory, ModelKind, ModelRef } from "./types.js"
 import { provisionModel } from "./provision/index.js"
 
 const factories = new Map<ModelKind, ModelFactory>()
@@ -26,7 +26,7 @@ export function registerModel(kind: ModelKind, factory: ModelFactory): void {
   factories.set(kind, factory)
 }
 
-const cache = new Map<string, Promise<Model>>()
+const cache = new Map<string, Promise<MLModel>>()
 
 function cacheKey(ref: ModelRef): string {
   return `${ref.kind}/${ref.id}/${ref.url ?? "_default"}`
@@ -40,7 +40,7 @@ function cacheKey(ref: ModelRef): string {
  * Lazy: models load only when first requested. Subsequent calls
  * return the cached instance.
  */
-export async function loadModel(ref: ModelRef): Promise<Model> {
+export async function loadModel(ref: ModelRef): Promise<MLModel> {
   const key = cacheKey(ref)
   const cached = cache.get(key)
   if (cached) return cached
