@@ -42,3 +42,4 @@ export { setModelBase, getModelBase } from "./provision/index.js"
 // Side-effect: register built-in model kinds. Adding a new model kind
 // = adding a new import here. Order doesn't matter.
 import "./models/rababa/index.js"
+import "./models/secryst/index.js"

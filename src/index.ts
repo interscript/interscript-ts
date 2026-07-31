@@ -18,7 +18,7 @@ import type {
   SystemCode,
 } from "./types.js"
 import { MapLoader, type LoadStrategy } from "./loader.js"
-import { executeStage } from "./runtime/interpreter.js"
+import { executeStage, executeStageAsync } from "./runtime/interpreter.js"
 import {
   DependencyMissingError,
   InterscriptError,
@@ -158,6 +158,8 @@ class InterscriptRuntime {
   /**
    * Async transliterate. Required when the configured strategies include
    * async loaders (e.g. httpStrategy) and the map may not be cached.
+   * Also handles ML-powered maps (rababa, secryst) — use this instead
+   * of transliterate() for any map that might contain ML funcalls.
    */
   async transliterateAsync(
     systemCode: SystemCode,
@@ -167,7 +169,7 @@ class InterscriptRuntime {
     try {
       const map = await this.loadMapAsync(systemCode)
       const stageName = stage ?? this.defaultStage
-      return executeStage(map, stageName, input, this.loader)
+      return await executeStageAsync(map, stageName, input, this.loader)
     } catch (e) {
       if (e instanceof InterscriptError) throw e
       throw new SystemConversionError(
