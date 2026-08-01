@@ -37,7 +37,19 @@ export {
 
 export { createSession, detectBackend } from "./session/index.js"
 
-export { setModelBase, getModelBase } from "./provision/index.js"
+export { setModelBase, getModelBase } from "./provision/base.js"
+
+export {
+  loadManifest,
+  resolveManifestEntry,
+  artifactUrls,
+  sidecarFilenames,
+  setInlineManifest,
+  setManifestUrl,
+  type AssetVariant,
+  type Manifest,
+  type ManifestModelEntry,
+} from "./provision/manifest.js"
 
 // Side-effect: register built-in model kinds. Adding a new model kind
 // = adding a new import here. Order doesn't matter.

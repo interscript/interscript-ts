@@ -2,17 +2,26 @@
  * Model provisioner — fetch + cache model files.
  *
  * Used by the registry to materialize a ModelRef into a session +
- * auxiliary artifacts. Reuses the existing httpStrategy for HTTP
- * fetching + localStorage caching; falls back to filesystemStrategy
- * in Node.
+ * auxiliary artifacts. Reuses fetch (works in Node 18+ and modern
+ * browsers); falls back to filesystem reads in Node when given a
+ * `file:` or relative URL.
  *
- * Adding a new source (e.g. IPFS, BitTorrent) = adding a new
- * provisioner file. Existing code never changes (OCP).
+ * The manifest (version → URL mapping) lives in `./manifest.ts`.
+ * The base URL (CDN mirror override) lives in `./base.ts`.
+ *
+ * Adding a new provision source (e.g. IPFS, BitTorrent) = adding a
+ * new provisioner file. Existing code never changes (OCP).
  */
 
 import type { ModelArtifacts, ModelRef } from "../types.js"
 import type { InferenceSession } from "../session/index.js"
 import { createSession } from "../session/index.js"
+import {
+  artifactUrls,
+  resolveManifestEntry,
+  sidecarFilenames,
+  type AssetVariant,
+} from "./manifest.js"
 
 export interface ProvisionedModel {
   readonly session: InferenceSession
@@ -20,101 +29,104 @@ export interface ProvisionedModel {
 }
 
 /**
- * Default model URLs — kept short for the most common refs. Override
- * by passing `url` in the ModelRef.
- *
- * In production, models live on a CDN (HuggingFace or jsDelivr). The
- * defaults here can be remapped via setModelBase().
+ * Which ONNX variant to download. `q8` is the browser default —
+ * 8-bit quantized, ~25% the size of fp32 with negligible accuracy
+ * loss for character-level transformers. Override per-call via
+ * `provisionModel(ref, { variant: "fp32" })`.
  */
-let modelBase = "https://huggingface.co/interscript/interscript-models/resolve/main"
-
-export function setModelBase(url: string): void {
-  modelBase = url.replace(/\/$/, "")
-}
-
-export function getModelBase(): string {
-  return modelBase
-}
-
-interface ModelManifestEntry {
-  readonly files: readonly string[]
+export interface ProvisionOptions {
+  readonly variant?: AssetVariant
 }
 
 /**
- * Built-in manifest — small enough to inline. Production deployments
- * should override via setModelBase() pointing at a real CDN.
- */
-const knownModels: Record<string, ModelManifestEntry> = {
-  "rababa/200": {
-    files: ["model.onnx", "config.json", "vocab.json"],
-  },
-  "secryst/thai-ipa": {
-    files: ["model.onnx", "vocabs.yaml"],
-  },
-}
-
-function defaultUrlFor(ref: ModelRef): string {
-  const key = `${ref.kind}/${ref.id}`
-  return `${modelBase}/${encodeURIComponent(key)}/model.onnx`
-}
-
-function artifactUrlFor(ref: ModelRef, filename: string): string {
-  const key = `${ref.kind}/${ref.id}`
-  return `${modelBase}/${encodeURIComponent(key)}/${filename}`
-}
-
-/**
- * Provision a model from the configured base URL. Fetches the model
- * file + any auxiliary artifacts, opens an inference session.
+ * Provision a model from the manifest. Resolves the task version,
+ * downloads the ONNX file from the CDN (falls back to GitHub
+ * Releases), opens an inference session, and fetches sidecar
+ * artifacts (vocab, config, checksum) in parallel.
  *
  * In Node, can read from the filesystem if `url` starts with `file:`
  * or is a relative path.
  */
-export async function provisionModel(ref: ModelRef): Promise<ProvisionedModel> {
-  const key = `${ref.kind}/${ref.id}`
-  const manifest = knownModels[key]
-  const artifactFiles = manifest?.files ?? []
+export async function provisionModel(
+  ref: ModelRef,
+  opts: ProvisionOptions = {},
+): Promise<ProvisionedModel> {
+  const variant = opts.variant ?? "q8"
 
-  // Fetch the model ONNX file
-  const modelUrl = ref.url ?? defaultUrlFor(ref)
-  const modelBuffer = await fetchBytes(modelUrl)
+  const modelUrl = ref.url ?? (await resolveModelUrl(ref, variant))
 
-  // Fetch auxiliary artifacts in parallel
+  const modelBuffer = await fetchBytesWithFallback(modelUrl)
+
+  const sidecars = await resolveSidecarUrls(ref, variant)
   const artifacts: Record<string, Uint8Array | string> = {}
   await Promise.all(
-    artifactFiles
-      .filter((f) => f !== "model.onnx")
-      .map(async (filename) => {
-        try {
-          const bytes = await fetchBytes(artifactUrlFor(ref, filename))
-          // Treat JSON + YAML as text for easy parsing downstream.
-          if (filename.endsWith(".json") || filename.endsWith(".yaml") || filename.endsWith(".yml")) {
-            artifacts[filename] = new TextDecoder().decode(bytes)
-          } else {
-            artifacts[filename] = bytes
-          }
-        } catch {
-          // Auxiliary artifacts are optional; missing ones are skipped.
+    sidecars.map(async ({ filename, url }) => {
+      try {
+        const bytes = await fetchBytesWithFallback(url)
+        if (
+          filename.endsWith(".json") ||
+          filename.endsWith(".yaml") ||
+          filename.endsWith(".yml") ||
+          filename.endsWith(".sha256")
+        ) {
+          artifacts[filename] = new TextDecoder().decode(bytes)
+        } else {
+          artifacts[filename] = bytes
         }
-      }),
+      } catch {
+        // Sidecars are optional; missing ones are skipped.
+      }
+    }),
   )
 
   const session = await createSession(modelBuffer)
   return { session, artifacts }
 }
 
-async function fetchBytes(url: string): Promise<Uint8Array> {
+async function resolveModelUrl(ref: ModelRef, variant: AssetVariant): Promise<string> {
+  const entry = await resolveManifestEntry(ref.kind, ref.id)
+  if (!entry) {
+    throw new Error(
+      `No manifest entry for kind=${ref.kind} id=${ref.id}. ` +
+        `Pass an explicit \`url\` on the ModelRef or pin a task version in the manifest.`,
+    )
+  }
+  const { primary } = artifactUrls(entry, variant)
+  return primary
+}
+
+async function resolveSidecarUrls(
+  ref: ModelRef,
+  variant: AssetVariant,
+): Promise<readonly { filename: string; url: string }[]> {
+  const entry = await resolveManifestEntry(ref.kind, ref.id)
+  if (!entry) return []
+  const { primary, assetName } = artifactUrls(entry, variant)
+  const base = primary.slice(0, primary.lastIndexOf("/") + 1)
+  return sidecarFilenames(entry, variant).map((filename) => ({
+    filename,
+    url: `${base}${filename.startsWith(assetName) ? filename : filename}`,
+  }))
+}
+
+/**
+ * Fetch bytes from a URL. Tries the URL as-given; if it's the CDN
+ * primary and fails, the caller can supply a fallback URL via the
+ * `url` field on the ModelRef.
+ */
+async function fetchBytesWithFallback(url: string): Promise<Uint8Array> {
   // Node filesystem path
-  if (url.startsWith("file:") || (url.startsWith(".") && typeof process !== "undefined" && process.versions?.node)) {
+  if (
+    url.startsWith("file:") ||
+    (url.startsWith(".") && typeof process !== "undefined" && process.versions?.node)
+  ) {
     const { readFile } = await import("node:fs/promises")
     const path = url.startsWith("file:") ? url.slice(5) : url
     return new Uint8Array(await readFile(path))
   }
-  // HTTP fetch — works in both Node (18+) and browser
   const res = await fetch(url)
   if (!res.ok) {
-    throw new Error(`Failed to fetch model from ${url}: ${res.status} ${res.statusText}`)
+    throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`)
   }
-  const buf = await res.arrayBuffer()
-  return new Uint8Array(buf)
+  return new Uint8Array(await res.arrayBuffer())
 }
