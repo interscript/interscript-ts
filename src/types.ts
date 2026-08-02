@@ -138,6 +138,7 @@ export type Item =
   | CaptureRefItem
   | AliasItem
   | AnyItem
+  | AnyCharClassItem
   | GroupItem
   | RepeatItem
   | StageItem
@@ -168,6 +169,18 @@ export interface AliasItem {
 export interface AnyItem {
   readonly kind: "any"
   readonly of: readonly Item[]
+}
+
+/**
+ * Character class — `[a-z]`, `[abc]`, etc. Mirrors Ruby's Any node when
+ * constructed from a String or Range payload. Kept distinct from
+ * `AnyItem` because Ruby's interpreter compiles them differently:
+ * `Any(["a","b"])` → `(?:a|b)`, `Any("ab")` → `[ab]`, `Any("a".."z")` → `[a-z]`.
+ */
+export interface AnyCharClassItem {
+  readonly kind: "any_char_class"
+  readonly range?: readonly [string, string]
+  readonly chars?: readonly string[]
 }
 
 export interface GroupItem {

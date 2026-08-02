@@ -10,13 +10,13 @@
 
 import type { Item, Rule, SubRule } from "../types.js"
 import type { ExecutionContext } from "./context.js"
-import { compileItem, compileToLiteral, expandFromLiterals } from "./compile-item.js"
+import { compileItem, compileToLiteral, expandFromLiterals, maxLengthOfItem } from "./compile-item.js"
 import { MapLogicError } from "../errors.js"
 import {
   compileParallelTree,
   parallelReplaceTree,
-  parallelSinglePass,
-  type ConstrainedMatcher,
+  parallelMegaregexp,
+  type MegaregexpRule,
   downcase,
   upcase,
   titleCase,
@@ -24,6 +24,7 @@ import {
   compose,
   decompose,
 } from "../stdlib.js"
+import { rababa, rababaReverse } from "../stdlib/ml.js"
 
 type RuleKind = Rule["kind"]
 type RuleExecutorFor<K extends RuleKind> = (
@@ -73,55 +74,98 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
   },
 
   parallel: (rule, ctx) => {
-    // Parallel rule groups: split into unconstrained (trie) and
-    // constrained (sequential). Trie first (longest-match-wins),
-    // then constrained sorted by from-length descending.
-    const triePairs: [string, string][] = []
-    const constrainedRules: SubRule[] = []
+    // Ruby's parallel executor tries tree mode first; if ANY rule has
+    // before/after/not_before/not_after constraints OR contains a
+    // re-only stdlib alias (boundary, line_start, word, etc.) inside
+    // `from`, the whole block falls back to a single megaregexp gsub
+    // (alternation of every rule's compiled pattern, first-match-wins
+    // at each position).
+    //
+    // Splitting at the rule level (trie for unconstrained, sequential
+    // for constrained) produces different output because the trie pass
+    // mutates the string before constrained rules can compete. We must
+    // take the WHOLE block down one path or the other.
 
+    const subRules: SubRule[] = []
+    const trailingRules: Rule[] = []
     for (const inner of rule.rules) {
-      if (inner.kind !== "sub" || !inner.from) {
-        // Non-sub rules: apply via executeRule after the parallel pass
-        continue
-      }
-
-      const hasConstraints = inner.before || inner.after || inner.notBefore || inner.notAfter
-
-      if (!hasConstraints) {
-        // Unconstrained: add to trie
-        const toItem = inner.to
-        const toLit = !toItem
-          ? ""
-          : toItem.kind === "funcall_inline"
-            ? null
-            : compileToLiteral(toItem, ctx)
-        if (toLit === null) continue
-        const fromAlts = expandFromLiterals(inner.from, ctx)
-        if (fromAlts === null) continue
-        for (const fromLit of fromAlts) {
-          triePairs.push([fromLit, toLit])
-        }
+      if (inner.kind === "sub" && inner.from) {
+        subRules.push(inner)
       } else {
-        constrainedRules.push(inner)
+        trailingRules.push(inner)
       }
     }
 
-    if (triePairs.length > 0) {
-      const tree = compileParallelTree(triePairs)
-      ctx.current = parallelReplaceTree(ctx.current, tree)
+    // A rule is tree-compatible if it has no before/after clauses AND
+    // its `from` can be expanded to literal strings (no re-only aliases
+    // like boundary, no captures). If any rule fails this check, the
+    // whole block goes through megaregexp.
+    const treeCompatible = (r: SubRule) =>
+      !r.before && !r.after && !r.notBefore && !r.notAfter && expandFromLiterals(r.from!, ctx) !== null
+
+    const anyConstrained = subRules.some((r) => !treeCompatible(r))
+
+    if (!anyConstrained) {
+      // Tree mode: every from must compile to literal(s)
+      const triePairs: [string, string][] = []
+      for (const r of subRules) {
+        if (r.to && r.to.kind === "funcall_inline") continue
+        const toLit = r.to ? compileToLiteral(r.to, ctx) : ""
+        if (toLit === null) continue
+        const fromAlts = expandFromLiterals(r.from!, ctx)
+        if (fromAlts === null) continue
+        for (const fromLit of fromAlts) triePairs.push([fromLit, toLit])
+      }
+      if (triePairs.length > 0) {
+        ctx.current = parallelReplaceTree(ctx.current, compileParallelTree(triePairs))
+      }
+    } else {
+      // Megaregexp mode: sort by max_length desc (declaration as
+      // tiebreaker), then build one alternation regex.
+      const sorted = subRules
+        .map((r, idx) => ({
+          rule: r,
+          idx,
+          len:
+            maxLengthOfItem(r.from!, ctx) +
+            (r.before ? maxLengthOfItem(r.before, ctx) : 0) +
+            (r.after ? maxLengthOfItem(r.after, ctx) : 0) +
+            (r.notBefore ? maxLengthOfItem(r.notBefore, ctx) : 0) +
+            (r.notAfter ? maxLengthOfItem(r.notAfter, ctx) : 0) +
+            (r.priority ?? 0),
+        }))
+        .sort((a, b) => b.len - a.len || a.idx - b.idx)
+
+      const megaRules: MegaregexpRule[] = sorted.map(({ rule: r }) => {
+        const from = compileItem(r.from!, ctx)
+        const before = r.before ? compileItem(r.before, ctx).re : ""
+        const after = r.after ? compileItem(r.after, ctx).re : ""
+        const notBefore = r.notBefore ? compileItem(r.notBefore, ctx).re : ""
+        const notAfter = r.notAfter ? compileItem(r.notAfter, ctx).re : ""
+
+        const pattern = [
+          before ? `(?<=${before})` : "",
+          notBefore ? `(?<!${notBefore})` : "",
+          from.re,
+          after ? `(?=${after})` : "",
+          notAfter ? `(?!${notAfter})` : "",
+        ].join("")
+
+        const replacement = buildReplacement(r.to, ctx)
+        const replaceFn =
+          typeof replacement === "string"
+            ? (match: string, _groups: (string | undefined)[]) =>
+                resolveTemplate(replacement, match, _groups as string[])
+            : replacement
+        return { pattern, replace: replaceFn }
+      })
+
+      ctx.current = parallelMegaregexp(ctx.current, megaRules)
     }
 
-    // Apply constrained rules after the trie pass, sorted by from-length
-    // descending so longer patterns fire first.
-    const sorted = constrainedRules
-      .map((r) => {
-        const fl = r.from ? compileToLiteral(r.from, ctx) : null
-        return { rule: r, len: fl?.length ?? 0 }
-      })
-      .sort((a, b) => b.len - a.len)
-    for (const { rule: r } of sorted) {
-      executeSubRule(r, ctx)
-    }
+    // Non-sub rules (run/funcall/etc.) execute after the parallel pass,
+    // in declaration order.
+    for (const r of trailingRules) executeRule(r, ctx)
   },
 
   sequential: (rule, ctx) => {

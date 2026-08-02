@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import { MapLoader } from "../src/loader.js"
-import { filesystemStrategy, normaliseMap, bundledStrategy } from "../src/loaders.js"
+import { filesystemStrategy, normaliseMap, bundledStrategy } from "../src/loaders.node.js"
 import type { CompiledMapJson } from "../src/index.js"
 import { MapNotFoundError } from "../src/errors.js"
 import { resolve } from "node:path"

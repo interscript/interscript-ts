@@ -52,7 +52,28 @@ export function compileItem(item: Item, ctx: ExecutionContext): CompiledItem {
 
     case "any": {
       const parts = item.of.map((i) => compileItem(i, ctx).re)
-      return { re: `(?:${parts.join("|")})`, literal: "" }
+      // Mirror Ruby's Any#nth_string: the literal form picks the first
+      // alternative. Sub rules with `to: any("ie")` use this for the
+      // canonical replacement.
+      const firstLit = item.of.length > 0 ? compileItem(item.of[0]!, ctx).literal : ""
+      return { re: `(?:${parts.join("|")})`, literal: firstLit }
+    }
+
+    case "any_char_class": {
+      // Build a JS char class. Range → [first-last], chars → [abc].
+      // Both forms are escaped so a literal `]` or `-` survives.
+      if (item.range) {
+        const [first, last] = item.range
+        return {
+          re: `[${regexpEscape(first!)}-${regexpEscape(last!)}]`,
+          literal: first ?? "",
+        }
+      }
+      if (item.chars && item.chars.length > 0) {
+        const escaped = item.chars.map((c) => regexpEscape(c)).join("")
+        return { re: `[${escaped}]`, literal: item.chars[0]! }
+      }
+      return { re: "[^]", literal: "" }
     }
 
     case "group": {
@@ -103,6 +124,13 @@ export function compileToLiteral(item: Item, ctx: ExecutionContext): string | nu
     case "stage_ref":
       return null
 
+    case "any_char_class": {
+      // Mirror Ruby's Any#nth_string: first char of the class.
+      if (item.chars && item.chars.length > 0) return item.chars[0]!
+      if (item.range) return item.range[0]!
+      return null
+    }
+
     case "any": {
       // `any` represents alternative spellings (e.g. "te" vs "t" for the
       // same source char). Ruby picks the first option in non-iterating
@@ -143,6 +171,22 @@ export function expandFromLiterals(item: Item, ctx: ExecutionContext): string[] 
       return expandFromLiterals(resolved, ctx)
     }
 
+    case "any_char_class": {
+      // Mirror Ruby's parallel-tree expansion: one entry per char.
+      // For ranges, expand every code point — same as Ruby's Any#data
+      // when value is a Range.
+      if (item.chars) return [...item.chars]
+      if (item.range) {
+        const [first, last] = item.range
+        const start = first!.codePointAt(0)!
+        const end = last!.codePointAt(0)!
+        const out: string[] = []
+        for (let cp = start; cp <= end; cp++) out.push(String.fromCodePoint(cp))
+        return out
+      }
+      return null
+    }
+
     case "any": {
       const out: string[] = []
       for (const child of item.of) {
@@ -176,6 +220,42 @@ export function expandFromLiterals(item: Item, ctx: ExecutionContext): string[] 
 }
 
 /**
+ * Compute the max-length estimate for an Item. Mirrors Ruby's
+ * `Node::Item#max_length`, which is used to sort parallel rules
+ * (longest first) before building the megaregexp fallback.
+ *
+ * The estimate need not be exact — it only governs sort order within
+ * a parallel block. Stdlib aliases count as length 1 (matching Ruby),
+ * `none` is 0.
+ */
+export function maxLengthOfItem(item: Item, ctx: ExecutionContext): number {
+  switch (item.kind) {
+    case "string":
+      return item.value.length
+    case "capture_group":
+      return maxLengthOfItem(item.data, ctx)
+    case "capture_ref":
+      return 1
+    case "alias": {
+      if (item.name === "none") return 0
+      if (STDLIB_ALIASES[item.name]) return 1
+      const resolved = ctx.resolveAlias(item.name)
+      return resolved ? maxLengthOfItem(resolved, ctx) : 1
+    }
+    case "any":
+      return item.of.reduce((m, i) => Math.max(m, maxLengthOfItem(i, ctx)), 0)
+    case "any_char_class":
+      return 1
+    case "group":
+      return item.items.reduce((sum, i) => sum + maxLengthOfItem(i, ctx), 0)
+    case "repeat":
+      return maxLengthOfItem(item.item, ctx)
+    case "stage_ref":
+      return 1
+  }
+}
+
+/**
  * Stdlib alias table — single-character aliases like `:word`, `:boundary`.
  * Mirrors Interscript::Stdlib::ALIASES in Ruby.
  */
@@ -184,16 +264,24 @@ const STDLIB_ALIASES: Readonly<Record<string, CompiledItem>> = Object.freeze({
   none: { re: "", literal: "" },
   space: { re: " ", literal: " " },
   whitespace: { re: "\\s+", literal: " " },
-  // JavaScript's \b only works for ASCII. Use Unicode-aware lookarounds
-  // so that word boundaries work correctly for Cyrillic, Greek, etc.
+  // Boundary is implemented as Unicode-aware lookarounds so that
+  // Cyrillic, Arabic, Devanagari etc. get correct word boundaries
+  // (66 maps rely on this). Ruby's \b is ASCII-only by default, but
+  // most maps work because their boundary usage is at start-of-string
+  // or after whitespace — cases where ASCII \b happens to coincide
+  // with the Unicode form.
   boundary: { re: "(?:(?<![\\p{L}\\p{M}])(?=[\\p{L}\\p{M}])|(?<=[\\p{L}\\p{M}])(?![\\p{L}\\p{M}]))", literal: "" },
   non_word_boundary: { re: "(?:(?<=[\\p{L}\\p{M}])(?=[\\p{L}\\p{M}])|(?<![\\p{L}\\p{M}])(?![\\p{L}\\p{M}]))", literal: "" },
-  word: { re: "\\p{L}\\p{N}_", literal: "" },
-  not_word: { re: "[^\\p{L}\\p{N}_]", literal: "" },
-  alpha: { re: "\\p{L}", literal: "" },
-  not_alpha: { re: "\\P{L}", literal: "" },
-  digit: { re: "\\p{N}", literal: "" },
-  not_digit: { re: "\\P{N}", literal: "" },
+  // word / not_word mirror Ruby's default ASCII-only \w / \W. Only one
+  // map (odni-che-Cyrl-Latn-2015) uses these aliases — its palochka
+  // rule depends on Cyrillic being treated as non-word. ASCII-only
+  // here is harmless to the 65+ maps that use boundary instead.
+  word: { re: "[A-Za-z0-9_]", literal: "" },
+  not_word: { re: "[^A-Za-z0-9_]", literal: "" },
+  alpha: { re: "[a-zA-Z]", literal: "" },
+  not_alpha: { re: "[^a-zA-Z]", literal: "" },
+  digit: { re: "[0-9]", literal: "" },
+  not_digit: { re: "[^0-9]", literal: "" },
   line_start: { re: "^", literal: "" },
   line_end: { re: "(?=\\n|$)", literal: "" },
   string_start: { re: "^", literal: "" },

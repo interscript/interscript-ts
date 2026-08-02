@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { levenshtein, detectInMaps } from "../src/detector.js"
 import { MapLoader } from "../src/loader.js"
-import { filesystemStrategy } from "../src/loaders.js"
+import { filesystemStrategy } from "../src/loaders.node.js"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { dirname } from "node:path"
