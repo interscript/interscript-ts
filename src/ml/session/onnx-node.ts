@@ -46,12 +46,17 @@ class NodeInferenceSession implements InferenceSession {
   private readonly ort: OnnxNodeModule
   readonly inputNames: readonly string[]
   readonly outputNames: readonly string[]
+  readonly inputMetadata?: ReadonlyArray<{ name: string; type: string; shape: ReadonlyArray<string | number> }> | undefined
 
   private constructor(session: OnnxNodeSession, ort: OnnxNodeModule) {
     this.session = session
     this.ort = ort
     this.inputNames = session.inputNames
     this.outputNames = session.outputNames
+    const raw = (session as { inputMetadata?: unknown }).inputMetadata
+    if (Array.isArray(raw)) {
+      this.inputMetadata = raw as NodeInferenceSession["inputMetadata"]
+    }
   }
 
   static async create(modelData: ArrayBuffer | Uint8Array): Promise<NodeInferenceSession> {

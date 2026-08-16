@@ -47,11 +47,20 @@ export interface InferenceOutputs {
  * An inference session wraps an ONNX model. Both Node and browser
  * backends implement this interface; callers don't know which.
  */
+export interface SessionInputMetadata {
+  readonly name: string
+  readonly type: string
+  readonly shape: ReadonlyArray<string | number>
+}
+
 export interface InferenceSession {
   /** Run inference with named inputs. Returns named outputs. */
   run(inputs: InferenceInputs): Promise<InferenceOutputs>
   /** Input names the model accepts. */
   inputNames: readonly string[]
+  /** Input shapes/types when the backend exposes them (used for
+   *  zero-length KV pasts whose static dims must match the graph). */
+  readonly inputMetadata?: readonly SessionInputMetadata[] | undefined
   /** Output names the model produces. */
   outputNames: readonly string[]
   /** Free native resources held by the session. */
