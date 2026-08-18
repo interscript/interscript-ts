@@ -90,6 +90,76 @@ describe("registry", () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  it("assembles split parts and verifies per-part + whole-file sha256", async () => {
+    const { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    const dir = mkdtempSync(join(tmpdir(), "imf-parts-"))
+    try {
+      mkdirSync(join(dir, "channel"))
+      const blob = fixtureZip
+      const split = Math.floor(blob.length / 2) + 3
+      const partA = blob.subarray(0, split)
+      const partB = blob.subarray(split)
+      writeFileSync(join(dir, "channel", "tiny.zip.part-00"), partA)
+      writeFileSync(join(dir, "channel", "tiny.zip.part-01"), partB)
+      const { createHash } = await import("node:crypto")
+      const sha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex")
+      writeFileSync(
+        join(dir, "models.yaml"),
+        `version: 1\nmodels:\n  tiny-1.0:\n    filename: tiny.zip\n    sha256: ${sha(blob)}\n    parts:\n` +
+          `      - url: file://${dir}/channel/tiny.zip.part-00\n        sha256: ${sha(partA)}\n        size: ${partA.length}\n` +
+          `      - url: file://${dir}/channel/tiny.zip.part-01\n        sha256: ${sha(partB)}\n        size: ${partB.length}\n`,
+      )
+      const cache = join(dir, "cache")
+      process.env["INTERSCRIPT_ML_CACHE"] = cache
+      try {
+        const resolved = await resolve("tiny-1.0", join(dir, "models.yaml"))
+        expect(resolved.path).toBe(join(cache, "models", "tiny-1.0", "tiny.zip"))
+        expect(new Uint8Array(readFileSync(resolved.path!))).toEqual(blob)
+        rmSync(join(dir, "channel", "tiny.zip.part-00"))
+        const again = await resolve("tiny-1.0", join(dir, "models.yaml"))
+        expect(again.path).toBe(resolved.path)
+      } finally {
+        delete process.env["INTERSCRIPT_ML_CACHE"]
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects a corrupt part by index", async () => {
+    const { mkdtempSync, writeFileSync, mkdirSync, rmSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    const dir = mkdtempSync(join(tmpdir(), "imf-badpart-"))
+    try {
+      mkdirSync(join(dir, "channel"))
+      const partA = fixtureZip.subarray(0, 7)
+      const partB = fixtureZip.subarray(7)
+      writeFileSync(join(dir, "channel", "tiny.zip.part-00"), partA)
+      writeFileSync(join(dir, "channel", "tiny.zip.part-01"), partB)
+      const { createHash } = await import("node:crypto")
+      const sha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex")
+      writeFileSync(
+        join(dir, "models.yaml"),
+        `version: 1\nmodels:\n  tiny-1.0:\n    filename: tiny.zip\n    sha256: ${sha(fixtureZip)}\n    parts:\n` +
+          `      - url: file://${dir}/channel/tiny.zip.part-00\n        sha256: ${"0".repeat(64)}\n        size: ${partA.length}\n` +
+          `      - url: file://${dir}/channel/tiny.zip.part-01\n        sha256: ${sha(partB)}\n        size: ${partB.length}\n`,
+      )
+      process.env["INTERSCRIPT_ML_CACHE"] = join(dir, "cache")
+      try {
+        await expect(resolve("tiny-1.0", join(dir, "models.yaml"))).rejects.toThrow(
+          /part 0 .* sha256 mismatch/,
+        )
+      } finally {
+        delete process.env["INTERSCRIPT_ML_CACHE"]
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })
 
 const e2eZip = process.env["INTERSCRIPT_TS_E2E_ZIP"]
