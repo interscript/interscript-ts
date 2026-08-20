@@ -18,8 +18,8 @@ export function parallelReplace(
   input: string,
   pairs: readonly (readonly [string, string])[],
 ): string {
-  if (pairs.length === 0) return input
-  return parallelReplaceTree(input, compileParallelTree(pairs))
+  if (pairs.length === 0) return input;
+  return parallelReplaceTree(input, compileParallelTree(pairs));
 }
 
 /**
@@ -30,12 +30,12 @@ export function parallelReplace(
  * Port of Ruby's nested-hash tree with `nil` sentinel for matches.
  */
 export interface ParallelTrieNode {
-  readonly children: Map<number, ParallelTrieNode>
-  match: string | null
+  readonly children: Map<number, ParallelTrieNode>;
+  match: string | null;
 }
 
 export function emptyTrieNode(): ParallelTrieNode {
-  return { children: new Map(), match: null }
+  return { children: new Map(), match: null };
 }
 
 /**
@@ -50,28 +50,28 @@ export function emptyTrieNode(): ParallelTrieNode {
 export function compileParallelTree(
   pairs: readonly (readonly [string, string])[],
 ): ParallelTrieNode {
-  const root = emptyTrieNode()
+  const root = emptyTrieNode();
   for (const [from, to] of pairs) {
-    if (from.length === 0) continue
-    let branch = root
+    if (from.length === 0) continue;
+    let branch = root;
     for (let i = 0; i < from.length - 1; i++) {
-      const code = from.charCodeAt(i)
-      let next = branch.children.get(code)
+      const code = from.charCodeAt(i);
+      let next = branch.children.get(code);
       if (!next) {
-        next = emptyTrieNode()
-        branch.children.set(code, next)
+        next = emptyTrieNode();
+        branch.children.set(code, next);
       }
-      branch = next
+      branch = next;
     }
-    const last = from.charCodeAt(from.length - 1)
-    let leaf = branch.children.get(last)
+    const last = from.charCodeAt(from.length - 1);
+    let leaf = branch.children.get(last);
     if (!leaf) {
-      leaf = emptyTrieNode()
-      branch.children.set(last, leaf)
+      leaf = emptyTrieNode();
+      branch.children.set(last, leaf);
     }
-    leaf.match = to
+    leaf.match = to;
   }
-  return root
+  return root;
 }
 
 /**
@@ -80,36 +80,39 @@ export function compileParallelTree(
  *
  * Port of `Interscript::Stdlib.parallel_replace_tree`.
  */
-export function parallelReplaceTree(input: string, tree: ParallelTrieNode): string {
-  let out = ""
-  const len = input.length
-  let i = 0
+export function parallelReplaceTree(
+  input: string,
+  tree: ParallelTrieNode,
+): string {
+  let out = "";
+  const len = input.length;
+  let i = 0;
 
   while (i < len) {
-    let branch = tree
-    let matchEnd = 0
-    let matchReplacement: string | null = null
+    let branch = tree;
+    let matchEnd = 0;
+    let matchReplacement: string | null = null;
 
     for (let j = 0; i + j < len; j++) {
-      const code = input.charCodeAt(i + j)
-      const next = branch.children.get(code)
-      if (!next) break
-      branch = next
+      const code = input.charCodeAt(i + j);
+      const next = branch.children.get(code);
+      if (!next) break;
+      branch = next;
       if (branch.match !== null) {
-        matchEnd = j + 1
-        matchReplacement = branch.match
+        matchEnd = j + 1;
+        matchReplacement = branch.match;
       }
     }
 
     if (matchReplacement !== null && matchEnd > 0) {
-      out += matchReplacement
-      i += matchEnd
+      out += matchReplacement;
+      i += matchEnd;
     } else {
-      out += input[i]
-      i += 1
+      out += input[i];
+      i += 1;
     }
   }
-  return out
+  return out;
 }
 
 /**
@@ -117,54 +120,63 @@ export function parallelReplaceTree(input: string, tree: ParallelTrieNode): stri
  * Port of Ruby's `Regexp.escape`.
  */
 export function regexpEscape(input: string): string {
-  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
  * Lowercase a string. Maps to `Interscript.functions.downcase`.
  */
 export function downcase(input: string): string {
-  return input.toLowerCase()
+  return input.toLowerCase();
 }
 
 /**
  * Uppercase a string. Maps to `Interscript.functions.upcase`.
  */
 export function upcase(input: string): string {
-  return input.toUpperCase()
+  return input.toUpperCase();
 }
 
 /**
  * Capitalise each word; honours custom word separator.
  * Maps to `Interscript.functions.title_case`.
  */
-export function titleCase(input: string, opts: { wordSeparator?: string } = {}): string {
-  const sep = opts.wordSeparator ?? " "
-  if (sep === "") return input.charAt(0).toUpperCase() + input.slice(1).toLowerCase()
+export function titleCase(
+  input: string,
+  opts: { wordSeparator?: string } = {},
+): string {
+  const sep = opts.wordSeparator ?? " ";
+  if (sep === "")
+    return input.charAt(0).toUpperCase() + input.slice(1).toLowerCase();
   return input
     .split(sep)
-    .map((w) => (w.length === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
-    .join(sep)
+    .map((w) =>
+      w.length === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
+    )
+    .join(sep);
 }
 
 /**
  * Insert a separator between every character.
  * Maps to `Interscript.functions.separate`.
  */
-export function separate(input: string, opts: { separator?: string } = {}): string {
-  const sep = opts.separator ?? " "
-  return input.split("").join(sep)
+export function separate(
+  input: string,
+  opts: { separator?: string } = {},
+): string {
+  const sep = opts.separator ?? " ";
+  return input.split("").join(sep);
 }
 
 /**
  * Unicode NFC normalisation via String.prototype.normalize.
  */
 export function compose(input: string): string {
-  return input.normalize("NFC")
+  return input.normalize("NFC");
 }
 
 export function decompose(input: string): string {
-  return input.normalize("NFD")
+  return input.normalize("NFD");
 }
 
 /**
@@ -176,8 +188,11 @@ export function decompose(input: string): string {
  * and unconstrained sub rules in a single pass.
  */
 export interface ConstrainedMatcher {
-  fromLength: number
-  test: (s: string, pos: number) => { replacement: string; matchLength: number } | null
+  fromLength: number;
+  test: (
+    s: string,
+    pos: number,
+  ) => { replacement: string; matchLength: number } | null;
 }
 
 export function parallelSinglePass(
@@ -185,47 +200,47 @@ export function parallelSinglePass(
   tree: ParallelTrieNode | null,
   matchers: ConstrainedMatcher[],
 ): string {
-  let out = ""
-  const len = input.length
-  let i = 0
+  let out = "";
+  const len = input.length;
+  let i = 0;
 
   while (i < len) {
-    let bestLen = 0
-    let bestReplacement: string | null = null
+    let bestLen = 0;
+    let bestReplacement: string | null = null;
 
     // Try the trie (unconstrained rules)
     if (tree) {
-      let branch = tree
+      let branch = tree;
       for (let j = 0; i + j < len; j++) {
-        const code = input.charCodeAt(i + j)
-        const next = branch.children.get(code)
-        if (!next) break
-        branch = next
+        const code = input.charCodeAt(i + j);
+        const next = branch.children.get(code);
+        if (!next) break;
+        branch = next;
         if (branch.match !== null) {
-          bestLen = j + 1
-          bestReplacement = branch.match
+          bestLen = j + 1;
+          bestReplacement = branch.match;
         }
       }
     }
 
     // Try each constrained matcher
     for (const matcher of matchers) {
-      const result = matcher.test(input, i)
+      const result = matcher.test(input, i);
       if (result !== null) {
         if (result.matchLength > bestLen) {
-          bestLen = result.matchLength
-          bestReplacement = result.replacement
+          bestLen = result.matchLength;
+          bestReplacement = result.replacement;
         }
       }
     }
 
     if (bestReplacement !== null && bestLen > 0) {
-      out += bestReplacement
-      i += bestLen
+      out += bestReplacement;
+      i += bestLen;
     } else {
-      out += input[i]
-      i += 1
+      out += input[i];
+      i += 1;
     }
   }
-  return out
+  return out;
 }

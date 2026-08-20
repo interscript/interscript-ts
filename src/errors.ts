@@ -7,20 +7,20 @@
  */
 
 export class InterscriptError extends Error {
-  override readonly cause?: unknown
+  override readonly cause?: unknown;
 
   constructor(message: string, options?: { cause?: unknown }) {
-    super(message, options)
-    this.name = new.target.name
-    this.cause = options?.cause
+    super(message, options);
+    this.name = new.target.name;
+    this.cause = options?.cause;
   }
 }
 
 export class MapNotFoundError extends InterscriptError {
-  readonly systemCode: string
+  readonly systemCode: string;
   constructor(systemCode: string) {
-    super(`Map not found: ${systemCode}`)
-    this.systemCode = systemCode
+    super(`Map not found: ${systemCode}`);
+    this.systemCode = systemCode;
   }
 }
 
@@ -29,9 +29,9 @@ export class SystemConversionError extends InterscriptError {}
 export class MapLogicError extends InterscriptError {}
 
 export class DependencyMissingError extends InterscriptError {
-  readonly dependency: string
+  readonly dependency: string;
   constructor(dependency: string) {
-    super(`Map dependency missing: ${dependency}`)
-    this.dependency = dependency
+    super(`Map dependency missing: ${dependency}`);
+    this.dependency = dependency;
   }
 }

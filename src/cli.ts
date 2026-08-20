@@ -9,10 +9,15 @@
  * If -o is omitted, writes to stdout.
  */
 
-import { parseArgs } from "node:util"
-import { readFileSync, writeFileSync, existsSync } from "node:fs"
-import { resolve } from "node:path"
-import { configure, reset, transliterate, filesystemStrategy } from "./index.js"
+import { parseArgs } from "node:util";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
+import {
+  configure,
+  reset,
+  transliterate,
+  filesystemStrategy,
+} from "./index.js";
 
 const { values } = parseArgs({
   options: {
@@ -23,7 +28,7 @@ const { values } = parseArgs({
     help: { type: "boolean", short: "h" },
   },
   strict: true,
-})
+});
 
 if (values.help || !values["system-code"]) {
   process.stdout.write(
@@ -36,36 +41,37 @@ Options:
   --maps-dir          Directory containing <systemCode>.json IR files
   -h, --help          Show this help
 `,
-  )
-  process.exit(values.help ? 0 : 1)
+  );
+  process.exit(values.help ? 0 : 1);
 }
 
 const mapsDir = values["maps-dir"]
   ? resolve(process.cwd(), values["maps-dir"])
-  : undefined
+  : undefined;
 
 if (mapsDir && !existsSync(mapsDir)) {
-  process.stderr.write(`Error: maps directory not found: ${mapsDir}\n`)
-  process.exit(2)
+  process.stderr.write(`Error: maps directory not found: ${mapsDir}\n`);
+  process.exit(2);
 }
 
-reset()
+reset();
 if (mapsDir) {
-  configure({ strategies: [filesystemStrategy(mapsDir)] })
+  configure({ strategies: [filesystemStrategy(mapsDir)] });
 }
 
-const inputText = values.input
-  ? readFileSync(resolve(process.cwd(), values.input), "utf8")
-  : readFileSync(0, "utf8")
+const inputText =
+  values.input && values.input !== "-"
+    ? readFileSync(resolve(process.cwd(), values.input), "utf8")
+    : readFileSync(0, "utf8");
 
 try {
-  const result = transliterate(values["system-code"]!, inputText)
+  const result = transliterate(values["system-code"]!, inputText);
   if (values.output) {
-    writeFileSync(resolve(process.cwd(), values.output), result + "\n")
+    writeFileSync(resolve(process.cwd(), values.output), result + "\n");
   } else {
-    process.stdout.write(result + "\n")
+    process.stdout.write(result + "\n");
   }
 } catch (e) {
-  process.stderr.write(`Error: ${(e as Error).message}\n`)
-  process.exit(1)
+  process.stderr.write(`Error: ${(e as Error).message}\n`);
+  process.exit(1);
 }

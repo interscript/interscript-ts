@@ -1,6 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest"
-import type { CompiledMap } from "../src/types.js"
-import { configure, reset, transliterate, MapNotFoundError } from "../src/index.js"
+import { describe, it, expect, beforeEach } from "vitest";
+import type { CompiledMap } from "../src/types.js";
+import {
+  configure,
+  reset,
+  transliterate,
+  MapNotFoundError,
+} from "../src/index.js";
 
 // A minimal hand-built map exercising every rule kind we support today.
 // Used to validate the interpreter without depending on the Ruby compiler
@@ -38,32 +43,38 @@ const HELLOWORLD_MAP: CompiledMap = {
   ],
   aliases: new Map(),
   functions: new Map(),
-}
+};
 
 function makeStrategy(map: CompiledMap) {
   return (systemCode: string): CompiledMap | undefined =>
-    systemCode === map.systemCode ? map : undefined
+    systemCode === map.systemCode ? map : undefined;
 }
 
 describe("interscript-ts", () => {
-  beforeEach(reset)
+  beforeEach(reset);
 
   describe("transliterate", () => {
     it("substitutes literal strings", () => {
-      configure({ strategies: [makeStrategy(HELLOWORLD_MAP)] })
-      expect(transliterate("test-helloworld-Latn-Latn-1", "hello")).toBe("world")
-    })
+      configure({ strategies: [makeStrategy(HELLOWORLD_MAP)] });
+      expect(transliterate("test-helloworld-Latn-Latn-1", "hello")).toBe(
+        "world",
+      );
+    });
 
     it("applies all rules in order", () => {
-      configure({ strategies: [makeStrategy(HELLOWORLD_MAP)] })
-      expect(transliterate("test-helloworld-Latn-Latn-1", "hello there")).toBe("world th_r_")
-    })
+      configure({ strategies: [makeStrategy(HELLOWORLD_MAP)] });
+      expect(transliterate("test-helloworld-Latn-Latn-1", "hello there")).toBe(
+        "world th_r_",
+      );
+    });
 
     it("throws MapNotFoundError for unknown system", () => {
-      configure({ strategies: [] })
-      expect(() => transliterate("does-not-exist", "x")).toThrow(MapNotFoundError)
-    })
-  })
+      configure({ strategies: [] });
+      expect(() => transliterate("does-not-exist", "x")).toThrow(
+        MapNotFoundError,
+      );
+    });
+  });
 
   describe("executeRule", () => {
     it("handles stage references via run rule", () => {
@@ -101,10 +112,10 @@ describe("interscript-ts", () => {
         ],
         aliases: new Map(),
         functions: new Map(),
-      }
-      configure({ strategies: [makeStrategy(mapWithStageRef)] })
-      expect(transliterate("test-stage-ref", "a")).toBe("Y")
-    })
+      };
+      configure({ strategies: [makeStrategy(mapWithStageRef)] });
+      expect(transliterate("test-stage-ref", "a")).toBe("Y");
+    });
 
     it("handles funcall rule", () => {
       const mapWithFn: CompiledMap = {
@@ -125,13 +136,16 @@ describe("interscript-ts", () => {
         ],
         aliases: new Map(),
         functions: new Map([
-          ["downcase", { name: "downcase", impl: (s: string) => s.toLowerCase() }],
+          [
+            "downcase",
+            { name: "downcase", impl: (s: string) => s.toLowerCase() },
+          ],
         ]),
-      }
-      configure({ strategies: [makeStrategy(mapWithFn)] })
-      expect(transliterate("test-funcall", "HELLO")).toBe("hello")
-    })
-  })
+      };
+      configure({ strategies: [makeStrategy(mapWithFn)] });
+      expect(transliterate("test-funcall", "HELLO")).toBe("hello");
+    });
+  });
 
   describe("item compilation", () => {
     it("escapes regex metacharacters in string items", () => {
@@ -154,10 +168,10 @@ describe("interscript-ts", () => {
         ],
         aliases: new Map(),
         functions: new Map(),
-      }
-      configure({ strategies: [makeStrategy(map)] })
-      expect(transliterate("test-escape", "a.b.c")).toBe("a_b_c")
-    })
+      };
+      configure({ strategies: [makeStrategy(map)] });
+      expect(transliterate("test-escape", "a.b.c")).toBe("a_b_c");
+    });
 
     it("resolves aliases", () => {
       const map: CompiledMap = {
@@ -193,9 +207,9 @@ describe("interscript-ts", () => {
           ],
         ]),
         functions: new Map(),
-      }
-      configure({ strategies: [makeStrategy(map)] })
-      expect(transliterate("test-alias", "hello world")).toBe("h_ll_ w_rld")
-    })
-  })
-})
+      };
+      configure({ strategies: [makeStrategy(map)] });
+      expect(transliterate("test-alias", "hello world")).toBe("h_ll_ w_rld");
+    });
+  });
+});
