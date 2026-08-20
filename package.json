@@ -1,7 +1,7 @@
 {
-  "name": "interscript-ts",
+  "name": "interscript",
   "version": "0.1.0",
-  "description": "Interscript TypeScript runtime — interoperable script conversion",
+  "description": "Interscript TypeScript runtime \u2014 interoperable script conversion",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
