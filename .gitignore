@@ -1,5 +1,13 @@
-/src/maps
-/node_modules
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
 
-# Legacy Opal bundle — do not commit (TS port will remove this entirely)
-interscript.js
+# Editor
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*

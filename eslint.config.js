@@ -1,55 +1,29 @@
-import js from "@eslint/js";
-import prettier from "eslint-config-prettier";
+import js from "@eslint/js"
+import tseslint from "typescript-eslint"
+import prettier from "eslint-config-prettier"
 
 export default [
   js.configs.recommended,
+  ...tseslint.configs.recommended,
   prettier,
   {
     languageOptions: {
       ecmaVersion: 2023,
-      sourceType: "commonjs",
+      sourceType: "module",
       globals: {
         console: "readonly",
-        require: "readonly",
-        module: "readonly",
         process: "readonly",
         Buffer: "readonly",
-        setTimeout: "readonly",
-        clearTimeout: "readonly",
       },
     },
     rules: {
-      "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
-      "no-undef": "error",
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/consistent-type-imports": "error",
       eqeqeq: ["error", "always"],
-    },
-    ignores: ["node_modules/", "src/maps/", "dist/", "interscript.js"],
-  },
-  {
-    files: ["src/stdlib.js"],
-    languageOptions: {
-      globals: {
-        // stdlib.js is consumed in both Node and browser contexts
-        document: "readonly",
-        window: "readonly",
-        XMLHttpRequest: "readonly",
-        XRegExp: "readonly",
-        fetch: "readonly",
-      },
+      "no-undef": "off",
     },
   },
   {
-    files: ["test/**/*.js"],
-    languageOptions: {
-      globals: {
-        describe: "readonly",
-        it: "readonly",
-        before: "readonly",
-        after: "readonly",
-        beforeEach: "readonly",
-        afterEach: "readonly",
-      },
-    },
+    ignores: ["dist/**", "node_modules/**", "test/fixtures/**"],
   },
-];
-
+]

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "systemCode": "odni-rus-Cyrl-Latn-2015",
+  "dependencies": [
+    "bgnpcgn-rus-Cyrl-Latn-1947"
+  ],
+  "metadata": {
+    "authority_id": "odni",
+    "id": "2015",
+    "language": "iso-639-2:rus",
+    "source_script": "Cyrl",
+    "destination_script": "Latn",
+    "name": "ICS-630-01 Romanization of Russian Personal Names (2015)",
+    "source": "ICS-630-01 Annex K",
+    "creation_date": "2015",
+    "confirmation_date": "2015",
+    "description": "This system, adapted from the Board of Geographic Names (BGN) Romanization system for Russian\n(1947), is the Intelligence Community (IC) standard for the transliteration of Russian names that will be\napplied to all final written reports and products for IC consumers. It is not intended to eliminate variations\nof a name that can contribute forensic information. Rather, it is to provide an IC standard Romanized\n(English) transliteration from Russian that can then be linked to forensic information in ways that will\nhelp identify the referent of the name.\n\nIn cases where an individual’s name has already been transliterated in a variant spelling, the IC Standard\nspelling should appear first, followed by the variant spelling(s) in parentheses at the first usage. E.g.,\nSergey Nikolayevich Tyurin (Serguei Nicolaivitch Tiourine). In addition, if the original Cyrillic spelling\nis known, that spelling should also appear in parentheses following the name, if possible, following best\npractices of the issuing organization and taking into consideration information system capabilities. This\nconvention is designed to ensure that vital forensic information is not lost.\n\nFor non-Russian names, use the relevant IC transliteration standard for names from that language. A\ntranslator’s note may be used to clarify the known origin of the person. Spell names of individuals from\nlanguages that are written in Roman letters as they are spelled in those languages (e.g., George Clooney,\nJorge Garcia, Georges Pompidou).\n\nIn the case of active senior government officials in the on-line CIA World Factbook and the on-line\ndirectory of Chiefs of State and Cabinet Members of Foreign Governments, the spellings given in these\non-line reference works should be used in place of the IC Standard. For any individual who has at one\ntime been listed in the Factbook or Chiefs of State directory but who no longer appears in those resources\n(i.e. is no longer a government official), the IC Standard spelling should appear first, with the spelling, if\nknown, as it previously appeared in those resources listed within parentheses at the first usage.\n\nThe primary goal is to produce a consistent Romanized transcription of names that is specifically readable\nto the English-speaking non-specialist. The system uses the 26 letters of the standard (English) Roman\nalphabet. Some ambiguities in the Romanized form will occur without the use of diacritics. However,\nwithin the context of a report, where additional information about the individual is provided, the referent\nwill be clearly identified. This system will be used in conjunction with on-line tools, name dictionaries,\nand lists containing conventional spellings of names of well-known individuals.\n",
+    "nonstandard": {}
+  },
+  "stages": [
+    {
+      "kind": "stage",
+      "name": "main",
+      "rules": [
+        {
+          "kind": "run",
+          "stage": "main",
+          "docName": "bgnpcgn-rus-Cyrl-Latn-1947"
+        },
+        {
+          "kind": "sub",
+          "from": {
+            "kind": "string",
+            "value": "’"
+          },
+          "to": {
+            "kind": "alias",
+            "name": "none"
+          }
+        }
+      ]
+    }
+  ],
+  "aliases": {},
+  "functions": {}
+}
