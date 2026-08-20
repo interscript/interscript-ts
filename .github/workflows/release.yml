@@ -1,51 +1,34 @@
 name: release
 
+# Release: tag v* to publish `interscript` to npm via TRUSTED PUBLISHING
+# (OIDC — no long-lived tokens).
+#
+# One-time manual setup (not automatable):
+#   1. On npmjs.com: package `interscript` → Settings → Trusted publishing →
+#      GitHub Actions → org `interscript`, repo `interscript-js`,
+#      workflow filename `release.yml`, allowed action `npm publish`.
+#   2. Node.js 24+ required (npm CLI >= 11.5.1 detects OIDC).
+
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout monorepo
-        uses: actions/checkout@v7
-        with:
-          repository: interscript/interscript
+      - uses: actions/checkout@v4
 
-      - name: Bootstrap packages
-        run: ruby bootstrap.rb
-
-      - uses: ruby/setup-ruby@v1
+      - uses: actions/setup-node@v4
         with:
-          ruby-version: '3.3'
-          bundler-cache: true
-          working-directory: ruby
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22'
+          node-version: '24'
           registry-url: https://registry.npmjs.org
-          cache: npm
-          cache-dependency-path: js/package-lock.json
 
-      - name: Install gems
-        working-directory: ruby
-        run: bundle install --jobs 4 --retry 3 --with jsexec --without secryst
-
-      - name: Test Ruby package
-        working-directory: ruby
-        run: bundle exec rake
-
-      - name: Test JS package
-        working-directory: js
-        run: npm ci && npm run prepareMaps && npm test
-
-      - name: Publish to npmjs.org
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.INTERSCRIPT_NPM_TOKEN }}
-        working-directory: js
-        run: |
-          npm run prepareMaps
-          npm publish --access public
+      - run: npm ci
+      - run: npm test
+      - run: npm run prepareMaps
+      - run: npm publish --access public
