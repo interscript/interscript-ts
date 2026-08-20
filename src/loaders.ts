@@ -6,11 +6,16 @@
  * change (OCP).
  */
 
-import { readFileSync } from "node:fs"
-import { fileURLToPath } from "node:url"
-import { dirname, resolve } from "node:path"
-import type { CompiledMap, CompiledMapJson, LoadStrategy, SystemCode } from "./index.js"
-import type { CompiledMapBuilder } from "./types.js"
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import type {
+  CompiledMap,
+  CompiledMapJson,
+  LoadStrategy,
+  SystemCode,
+} from "./index.js";
+import type { CompiledMapBuilder } from "./types.js";
 
 /**
  * Convert raw JSON IR (as emitted by the Ruby compiler) into the runtime
@@ -26,9 +31,9 @@ export function normaliseMap(json: CompiledMapJson): CompiledMap {
     stages: json.stages,
     aliases: new Map(Object.entries(json.aliases)),
     functions: new Map(),
-  } as CompiledMapBuilder
-  if (json.metadata) out.metadata = json.metadata
-  return out
+  } as CompiledMapBuilder;
+  if (json.metadata) out.metadata = json.metadata;
+  return out;
 }
 
 /**
@@ -38,26 +43,29 @@ export function normaliseMap(json: CompiledMapJson): CompiledMap {
  */
 export function filesystemStrategy(mapsDir: string): LoadStrategy {
   return (systemCode: SystemCode): CompiledMap | undefined => {
-    const path = resolve(mapsDir, `${systemCode}.json`)
+    const path = resolve(mapsDir, `${systemCode}.json`);
     try {
-      const raw = readFileSync(path, "utf8")
-      return normaliseMap(JSON.parse(raw) as CompiledMapJson)
+      const raw = readFileSync(path, "utf8");
+      return normaliseMap(JSON.parse(raw) as CompiledMapJson);
     } catch {
-      return undefined
+      return undefined;
     }
-  }
+  };
 }
 
 /**
  * Load maps from a JSON dictionary bundled at build time. Useful for
  * browser bundles and tests.
  */
-export function bundledStrategy(maps: Record<string, CompiledMapJson>): LoadStrategy {
-  const normalised = new Map<string, CompiledMap>()
+export function bundledStrategy(
+  maps: Record<string, CompiledMapJson>,
+): LoadStrategy {
+  const normalised = new Map<string, CompiledMap>();
   for (const [code, json] of Object.entries(maps)) {
-    normalised.set(code, normaliseMap(json))
+    normalised.set(code, normaliseMap(json));
   }
-  return (systemCode: SystemCode): CompiledMap | undefined => normalised.get(systemCode)
+  return (systemCode: SystemCode): CompiledMap | undefined =>
+    normalised.get(systemCode);
 }
 
 /**
@@ -67,6 +75,8 @@ export function relativeFilesystemStrategy(
   relativeTo: string,
   relativePath: string,
 ): LoadStrategy {
-  const base = relativeTo.startsWith("file://") ? dirname(fileURLToPath(relativeTo)) : relativeTo
-  return filesystemStrategy(resolve(base, relativePath))
+  const base = relativeTo.startsWith("file://")
+    ? dirname(fileURLToPath(relativeTo))
+    : relativeTo;
+  return filesystemStrategy(resolve(base, relativePath));
 }

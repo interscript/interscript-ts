@@ -5,10 +5,10 @@
  * returns the final string. Holds no state itself.
  */
 
-import type { CompiledMap, Stage } from "../types.js"
-import type { MapLoader } from "../loader.js"
-import { ExecutionContext } from "./context.js"
-import { executeRule } from "./executor.js"
+import type { CompiledMap, Stage } from "../types.js";
+import type { MapLoader } from "../loader.js";
+import { ExecutionContext } from "./context.js";
+import { executeRule } from "./executor.js";
 
 /**
  * Run a single stage by name. Returns the transformed string.
@@ -22,14 +22,14 @@ export function executeStage(
   input: string,
   loader?: MapLoader,
 ): string {
-  const stage: Stage | undefined = map.stages.find((s) => s.name === stageName)
+  const stage: Stage | undefined = map.stages.find((s) => s.name === stageName);
   if (!stage) {
-    return input
+    return input;
   }
 
-  const ctx = new ExecutionContext(map, input, loader)
+  const ctx = new ExecutionContext(map, input, loader);
   for (const rule of stage.rules) {
-    executeRule(rule, ctx)
+    executeRule(rule, ctx);
   }
-  return ctx.current
+  return ctx.current;
 }
