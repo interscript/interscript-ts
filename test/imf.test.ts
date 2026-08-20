@@ -1,7 +1,7 @@
 /**
  * IMF v1 runtime tests — the TypeScript side of the cross-runtime
  * contract. Tiny-graph zips for CI (no download); the golden e2e runs
- * when INTERSCRIPT_TS_E2E_ZIP points at a real zip.
+ * when SECRYST_E2E_ZIP points at a real zip.
  */
 
 import { readFileSync } from "node:fs"
@@ -61,7 +61,7 @@ describe("registry", () => {
         `version: 1\nmodels:\n  tiny-1.0:\n    filename: tiny.zip\n    url: file://${dir}/channel/tiny.zip\n    sha256: ${sha}\n`,
       )
       const cache = join(dir, "cache")
-      process.env["INTERSCRIPT_ML_CACHE"] = cache
+      process.env["SECRYST_CACHE"] = cache
       try {
         const resolved = await resolve("tiny-1.0", join(dir, "models.yaml"))
         expect(resolved.path).toBe(join(cache, "models", "tiny-1.0", "tiny.zip"))
@@ -70,7 +70,7 @@ describe("registry", () => {
         const again = await resolve("tiny-1.0", join(dir, "models.yaml"))
         expect(again.path).toBe(resolved.path)
       } finally {
-        delete process.env["INTERSCRIPT_ML_CACHE"]
+        delete process.env["SECRYST_CACHE"]
       }
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -113,7 +113,7 @@ describe("registry", () => {
           `      - url: file://${dir}/channel/tiny.zip.part-01\n        sha256: ${sha(partB)}\n        size: ${partB.length}\n`,
       )
       const cache = join(dir, "cache")
-      process.env["INTERSCRIPT_ML_CACHE"] = cache
+      process.env["SECRYST_CACHE"] = cache
       try {
         const resolved = await resolve("tiny-1.0", join(dir, "models.yaml"))
         expect(resolved.path).toBe(join(cache, "models", "tiny-1.0", "tiny.zip"))
@@ -122,7 +122,7 @@ describe("registry", () => {
         const again = await resolve("tiny-1.0", join(dir, "models.yaml"))
         expect(again.path).toBe(resolved.path)
       } finally {
-        delete process.env["INTERSCRIPT_ML_CACHE"]
+        delete process.env["SECRYST_CACHE"]
       }
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -148,13 +148,13 @@ describe("registry", () => {
           `      - url: file://${dir}/channel/tiny.zip.part-00\n        sha256: ${"0".repeat(64)}\n        size: ${partA.length}\n` +
           `      - url: file://${dir}/channel/tiny.zip.part-01\n        sha256: ${sha(partB)}\n        size: ${partB.length}\n`,
       )
-      process.env["INTERSCRIPT_ML_CACHE"] = join(dir, "cache")
+      process.env["SECRYST_CACHE"] = join(dir, "cache")
       try {
         await expect(resolve("tiny-1.0", join(dir, "models.yaml"))).rejects.toThrow(
           /part 0 .* sha256 mismatch/,
         )
       } finally {
-        delete process.env["INTERSCRIPT_ML_CACHE"]
+        delete process.env["SECRYST_CACHE"]
       }
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -162,7 +162,7 @@ describe("registry", () => {
   })
 })
 
-const e2eZip = process.env["INTERSCRIPT_TS_E2E_ZIP"]
+const e2eZip = process.env["SECRYST_E2E_ZIP"]
 
 describe("golden set e2e", () => {
   it.skipIf(!e2eZip)(
@@ -170,7 +170,7 @@ describe("golden set e2e", () => {
     async () => {
     const zip = e2eZip!
     const model = await IMFModel.load(zip)
-    const goldenPath = process.env["INTERSCRIPT_TS_GOLDEN"]
+    const goldenPath = process.env["SECRYST_GOLDEN"]
       ?? "/Users/mulgogi/src/interscript/ml-models/golden/khm-latn-100.jsonl"
     const rows = readFileSync(goldenPath, "utf-8")
       .split("\n")

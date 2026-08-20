@@ -5,14 +5,14 @@
  *
  * Node persists to ~/.cache/interscript/models/<id>/ (fs, atomic
  * rename); browsers keep the verified bytes in memory (the Cache API
- * integration is future work). Overrides: INTERSCRIPT_ML_INDEX,
- * INTERSCRIPT_ML_CACHE.
+ * integration is future work). Overrides: SECRYST_INDEX,
+ * SECRYST_CACHE.
  */
 
 import { load as loadYaml } from "js-yaml"
 
 export const DEFAULT_INDEX_URL =
-  "https://raw.githubusercontent.com/interscript/ml-models/main/models.yaml"
+  "https://raw.githubusercontent.com/interscript/interscript-ml/main/models.yaml"
 
 export interface Part {
   url: string
@@ -46,7 +46,7 @@ async function nodeFs(): Promise<NodeFs | undefined> {
 
 function cacheDir(): string {
   const home = process.env["HOME"] ?? process.env["USERPROFILE"] ?? "."
-  return process.env["INTERSCRIPT_ML_CACHE"] ?? `${home}/.cache/interscript`
+  return process.env["SECRYST_CACHE"] ?? `${home}/.cache/interscript`
 }
 
 async function fetchIndex(source: string): Promise<Record<string, IndexEntry>> {
@@ -110,7 +110,7 @@ export async function resolve(
   modelId: string,
   indexUrl?: string,
 ): Promise<ResolvedZip> {
-  const source = indexUrl ?? process.env["INTERSCRIPT_ML_INDEX"] ?? DEFAULT_INDEX_URL
+  const source = indexUrl ?? process.env["SECRYST_INDEX"] ?? DEFAULT_INDEX_URL
   const entries = await fetchIndex(source)
   const entry = entries[modelId]
   if (!entry) {
