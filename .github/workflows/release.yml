@@ -3,49 +3,26 @@ name: release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write  # required for npm provenance
 
 jobs:
-  release:
+  publish:
     runs-on: ubuntu-latest
+    environment: release
     steps:
-      - name: Checkout monorepo
-        uses: actions/checkout@v7
-        with:
-          repository: interscript/interscript
-
-      - name: Bootstrap packages
-        run: ruby bootstrap.rb
-
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-          bundler-cache: true
-          working-directory: ruby
-
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: '22'
-          registry-url: https://registry.npmjs.org
+          node-version: "22"
           cache: npm
-          cache-dependency-path: js/package-lock.json
-
-      - name: Install gems
-        working-directory: ruby
-        run: bundle install --jobs 4 --retry 3 --with jsexec --without secryst
-
-      - name: Test Ruby package
-        working-directory: ruby
-        run: bundle exec rake
-
-      - name: Test JS package
-        working-directory: js
-        run: npm ci && npm run prepareMaps && npm test
-
-      - name: Publish to npmjs.org
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.INTERSCRIPT_NPM_TOKEN }}
-        working-directory: js
-        run: |
-          npm run prepareMaps
-          npm publish --access public

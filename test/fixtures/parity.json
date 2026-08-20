@@ -1,0 +1,202 @@
+[
+  {
+    "system_code": "bgnpcgn-ukr-Cyrl-Latn-2019",
+    "input": "Hello World",
+    "expected": "Hello World"
+  },
+  {
+    "system_code": "bgnpcgn-ukr-Cyrl-Latn-2019",
+    "input": "Антон",
+    "expected": "Anton"
+  },
+  {
+    "system_code": "bgnpcgn-ukr-Cyrl-Latn-2019",
+    "input": "Михаил Тимофеевич",
+    "expected": "Mykhayl Tymofeevych"
+  },
+  {
+    "system_code": "bgnpcgn-ukr-Cyrl-Latn-2019",
+    "input": "Tschüß!",
+    "expected": "Tschüß!"
+  },
+  {
+    "system_code": "bgnpcgn-ukr-Cyrl-Latn-2019",
+    "input": "привет мир",
+    "expected": "pryvet myr"
+  },
+  {
+    "system_code": "bgnpcgn-ukr-Cyrl-Latn-2019",
+    "input": "Київ",
+    "expected": "Kyiv"
+  },
+  {
+    "system_code": "bgnpcgn-ukr-Cyrl-Latn-2019",
+    "input": "ኢትዮጵያ",
+    "expected": "ኢትዮጵያ"
+  },
+  {
+    "system_code": "bgnpcgn-ukr-Cyrl-Latn-2019",
+    "input": "தமிழ்",
+    "expected": "தமிழ்"
+  },
+  {
+    "system_code": "bgnpcgn-deu-Latn-Latn-2000",
+    "input": "Hello World",
+    "expected": "Hello World"
+  },
+  {
+    "system_code": "bgnpcgn-deu-Latn-Latn-2000",
+    "input": "Антон",
+    "expected": "Антон"
+  },
+  {
+    "system_code": "bgnpcgn-deu-Latn-Latn-2000",
+    "input": "Михаил Тимофеевич",
+    "expected": "Михаил Тимофеевич"
+  },
+  {
+    "system_code": "bgnpcgn-deu-Latn-Latn-2000",
+    "input": "Tschüß!",
+    "expected": "Tschueß!"
+  },
+  {
+    "system_code": "bgnpcgn-deu-Latn-Latn-2000",
+    "input": "привет мир",
+    "expected": "привет мир"
+  },
+  {
+    "system_code": "bgnpcgn-deu-Latn-Latn-2000",
+    "input": "Київ",
+    "expected": "Київ"
+  },
+  {
+    "system_code": "bgnpcgn-deu-Latn-Latn-2000",
+    "input": "ኢትዮጵያ",
+    "expected": "ኢትዮጵያ"
+  },
+  {
+    "system_code": "bgnpcgn-deu-Latn-Latn-2000",
+    "input": "தமிழ்",
+    "expected": "தமிழ்"
+  },
+  {
+    "system_code": "odni-rus-Cyrl-Latn-2015",
+    "input": "Hello World",
+    "expected": "Hello World"
+  },
+  {
+    "system_code": "odni-rus-Cyrl-Latn-2015",
+    "input": "Антон",
+    "expected": "Anton"
+  },
+  {
+    "system_code": "odni-rus-Cyrl-Latn-2015",
+    "input": "Михаил Тимофеевич",
+    "expected": "Mikhail Timofeyevich"
+  },
+  {
+    "system_code": "odni-rus-Cyrl-Latn-2015",
+    "input": "Tschüß!",
+    "expected": "Tschüß!"
+  },
+  {
+    "system_code": "odni-rus-Cyrl-Latn-2015",
+    "input": "привет мир",
+    "expected": "privet mir"
+  },
+  {
+    "system_code": "odni-rus-Cyrl-Latn-2015",
+    "input": "Київ",
+    "expected": "Kiїv"
+  },
+  {
+    "system_code": "odni-rus-Cyrl-Latn-2015",
+    "input": "ኢትዮጵያ",
+    "expected": "ኢትዮጵያ"
+  },
+  {
+    "system_code": "odni-rus-Cyrl-Latn-2015",
+    "input": "தமிழ்",
+    "expected": "தமிழ்"
+  },
+  {
+    "system_code": "un-tam-Taml-Latn-1972",
+    "input": "Hello World",
+    "expected": "Hello World"
+  },
+  {
+    "system_code": "un-tam-Taml-Latn-1972",
+    "input": "Антон",
+    "expected": "Антон"
+  },
+  {
+    "system_code": "un-tam-Taml-Latn-1972",
+    "input": "Михаил Тимофеевич",
+    "expected": "Михаил Тимофеевич"
+  },
+  {
+    "system_code": "un-tam-Taml-Latn-1972",
+    "input": "Tschüß!",
+    "expected": "Tschüß!"
+  },
+  {
+    "system_code": "un-tam-Taml-Latn-1972",
+    "input": "привет мир",
+    "expected": "привет мир"
+  },
+  {
+    "system_code": "un-tam-Taml-Latn-1972",
+    "input": "Київ",
+    "expected": "Київ"
+  },
+  {
+    "system_code": "un-tam-Taml-Latn-1972",
+    "input": "ኢትዮጵያ",
+    "expected": "ኢትዮጵያ"
+  },
+  {
+    "system_code": "un-tam-Taml-Latn-1972",
+    "input": "தமிழ்",
+    "expected": "tamil̮"
+  },
+  {
+    "system_code": "alalc-amh-Ethi-Latn-2011",
+    "input": "Hello World",
+    "expected": "Hello World"
+  },
+  {
+    "system_code": "alalc-amh-Ethi-Latn-2011",
+    "input": "Антон",
+    "expected": "Антон"
+  },
+  {
+    "system_code": "alalc-amh-Ethi-Latn-2011",
+    "input": "Михаил Тимофеевич",
+    "expected": "Михаил Тимофеевич"
+  },
+  {
+    "system_code": "alalc-amh-Ethi-Latn-2011",
+    "input": "Tschüß!",
+    "expected": "Tschüß!"
+  },
+  {
+    "system_code": "alalc-amh-Ethi-Latn-2011",
+    "input": "привет мир",
+    "expected": "привет мир"
+  },
+  {
+    "system_code": "alalc-amh-Ethi-Latn-2011",
+    "input": "Київ",
+    "expected": "Київ"
+  },
+  {
+    "system_code": "alalc-amh-Ethi-Latn-2011",
+    "input": "ኢትዮጵያ",
+    "expected": "ʼiteyop̣eyā"
+  },
+  {
+    "system_code": "alalc-amh-Ethi-Latn-2011",
+    "input": "தமிழ்",
+    "expected": "தமிழ்"
+  }
+]
