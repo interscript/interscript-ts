@@ -24,7 +24,7 @@ jobs:
           repository: interscript/maps
           path: _maps
       - name: Symlink maps into ../maps
-        run: ln -s "$PWD/_maps" "$GITHUB_WORKSPACE/maps"
+        run: ln -s "$PWD/_maps" "$GITHUB_WORKSPACE/../maps"
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
@@ -46,7 +46,7 @@ jobs:
           repository: interscript/maps
           path: _maps
       - name: Symlink maps into ../maps
-        run: ln -s "$PWD/_maps" "$GITHUB_WORKSPACE/maps"
+        run: ln -s "$PWD/_maps" "$GITHUB_WORKSPACE/../maps"
       - uses: actions/setup-node@v7
         with:
           node-version: "22"

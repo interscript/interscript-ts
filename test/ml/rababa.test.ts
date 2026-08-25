@@ -27,9 +27,10 @@ describe("Rababa haraqat constants", () => {
     expect(Object.keys(ALL_POSSIBLE_HARAQAT).length).toBe(15)
   })
 
-  it("ID_TO_HARAAQAT matches ALL_POSSIBLE_HARAQAT order", () => {
+  it("ID_TO_HARAAQAT is pad + ALL_POSSIBLE_HARAQAT keys + unused slot", () => {
     const keys = Object.keys(ALL_POSSIBLE_HARAQAT)
-    expect(ID_TO_HARAAQAT).toEqual(keys)
+    expect(ID_TO_HARAAQAT).toEqual(["P", ...keys, ""])
+    expect(ID_TO_HARAAQAT.length).toBe(17)
   })
 
   it("INPUT_VOCAB starts with pad symbol 'P'", () => {
