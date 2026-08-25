@@ -177,9 +177,9 @@ function assetNameFor(
  * trailing version segment.
  */
 function taskNameFromBases(entry: ManifestModelEntry): string {
-  const match = entry.github_base.match(/([^/]+)-v\{version\}\/$/)
-  const task = match?.[1]
-  if (task) return task
+  const lastSegment = entry.github_base.split("/").filter(Boolean).pop() ?? ""
+  const suffix = "-v{version}"
+  if (lastSegment.endsWith(suffix)) return lastSegment.slice(0, -suffix.length)
   throw new Error(
     `Cannot extract task name from manifest entry. github_base=${entry.github_base}`,
   )
