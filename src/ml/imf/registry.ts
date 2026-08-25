@@ -60,12 +60,14 @@ async function fetchIndex(source: string): Promise<Record<string, IndexEntry>> {
   if (raw.version !== 1) throw new RegistryError("index must have version: 1")
   const entries: Record<string, IndexEntry> = {}
   for (const [id, spec] of Object.entries(raw.models ?? {})) {
-    entries[id] = {
+    const entry: IndexEntry = {
       filename: spec["filename"] as string,
       url: (spec["url"] as string) ?? "",
       sha256: spec["sha256"] as string,
-      parts: spec["parts"] as Part[] | undefined,
     }
+    const parts = spec["parts"] as Part[] | undefined
+    if (parts) entry.parts = parts
+    entries[id] = entry
   }
   return entries
 }
