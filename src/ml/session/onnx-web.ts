@@ -1,6 +1,5 @@
 /**
- * Browser backend — wraps onnxruntime-web (WASM by default, optional
- * WebGPU).
+ * Browser backend — wraps onnxruntime-web with WebGPU + WASM fallback.
  *
  * Imported lazily by the session factory. Bundlers will only include
  * this in browser builds.
@@ -16,6 +15,18 @@ import type {
   Tensor,
   TensorData,
 } from "../types.js"
+
+export interface WebSessionOptions {
+  /**
+   * Try WebGPU first, fall back to WASM if WebGPU is unavailable or
+   * fails to initialize. Default: `true` — most browsers shipped WebGPU
+   * by default as of Nov 2025 (Chrome 113+, Safari 17+, Firefox 141+).
+   *
+   * Set to `false` to force WASM only — useful for debugging WebGPU
+   * quirks or in environments where the GPU driver is known to be bad.
+   */
+  webgpu?: boolean
+}
 
 type OrtWebSession = {
   readonly inputNames: readonly string[]
@@ -49,7 +60,7 @@ async function loadOrt(): Promise<OrtWebModule> {
     cached = (async () => {
       try {
         const mod = (await import("onnxruntime-web")) as unknown as OrtWebModule
-        // Use SIMD when available (~2x faster)
+        // Use SIMD when available (~2x faster for WASM fallback path).
         mod.env.wasm.simd = true
         return mod
       } catch (e) {
@@ -77,9 +88,18 @@ class WebInferenceSession implements InferenceSession {
     this.outputNames = session.outputNames
   }
 
-  static async create(modelData: ArrayBuffer | Uint8Array): Promise<WebInferenceSession> {
+  static async create(
+    modelData: ArrayBuffer | Uint8Array,
+    opts: WebSessionOptions = {},
+  ): Promise<WebInferenceSession> {
     const ort = await loadOrt()
-    const session = await ort.InferenceSession.create(modelData)
+    // Execution provider preference — onnxruntime-web picks the first
+    // available; WebGPU silently falls back to WASM when unavailable.
+    const executionProviders: string[] =
+      opts.webgpu === false ? ["wasm"] : ["webgpu", "wasm"]
+    const session = await ort.InferenceSession.create(modelData, {
+      executionProviders,
+    })
     return new WebInferenceSession(session, ort)
   }
 
@@ -107,6 +127,9 @@ class WebInferenceSession implements InferenceSession {
   }
 }
 
-export async function createWebSession(modelData: ArrayBuffer | Uint8Array): Promise<InferenceSession> {
-  return WebInferenceSession.create(modelData)
+export async function createWebSession(
+  modelData: ArrayBuffer | Uint8Array,
+  opts: WebSessionOptions = {},
+): Promise<InferenceSession> {
+  return WebInferenceSession.create(modelData, opts)
 }

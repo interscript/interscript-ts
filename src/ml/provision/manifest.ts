@@ -40,11 +40,26 @@ export interface Manifest {
  */
 export type AssetVariant = "fp32" | "q8" | "q4" | "fp16"
 
+/**
+ * Serialization format. ONNX is the historical default; LiteRT (.tflite)
+ * is the 2026 alternative backed by Google's LiteRT.js runtime.
+ *
+ * The two formats are orthogonal to `AssetVariant` — both can be
+ * quantized to q8, both can be fp32. The runtime that loads the file
+ * is what differs.
+ */
+export type AssetFormat = "onnx" | "tflite"
+
 const VARIANT_SUFFIX: Record<AssetVariant, string> = {
   fp32: "",
   q8: "-q8",
   q4: "-q4",
   fp16: "-fp16",
+}
+
+const FORMAT_EXTENSION: Record<AssetFormat, string> = {
+  onnx: ".onnx",
+  tflite: ".tflite",
 }
 
 let cachedManifest: Manifest | null = null
@@ -118,8 +133,9 @@ export async function resolveManifestEntry(
 export function artifactUrls(
   entry: ManifestModelEntry,
   variant: AssetVariant = "q8",
+  format: AssetFormat = "onnx",
 ): { primary: string; fallback: string; assetName: string } {
-  const assetName = assetNameFor(entry, variant)
+  const assetName = assetNameFor(entry, variant, format)
   const versionedCdn = entry.cdn_base.replace("{version}", entry.version)
   const versionedGithub = entry.github_base.replace("{version}", entry.version)
   return {
@@ -136,8 +152,9 @@ export function artifactUrls(
 export function sidecarFilenames(
   entry: ManifestModelEntry,
   variant: AssetVariant = "q8",
+  format: AssetFormat = "onnx",
 ): readonly string[] {
-  const asset = assetNameFor(entry, variant)
+  const asset = assetNameFor(entry, variant, format)
   return [
     `${asset}.sha256`,
     "vocab.json",
@@ -145,9 +162,13 @@ export function sidecarFilenames(
   ]
 }
 
-function assetNameFor(entry: ManifestModelEntry, variant: AssetVariant): string {
+function assetNameFor(
+  entry: ManifestModelEntry,
+  variant: AssetVariant,
+  format: AssetFormat = "onnx",
+): string {
   const task = taskNameFromBases(entry)
-  return `${task}${VARIANT_SUFFIX[variant]}.onnx`
+  return `${task}${VARIANT_SUFFIX[variant]}${FORMAT_EXTENSION[format]}`
 }
 
 /**

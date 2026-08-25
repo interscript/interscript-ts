@@ -73,18 +73,32 @@ class RababaModelImpl implements RababaModel {
     const sequence = this.encoder.inputToSequence(stripped)
     if (sequence.length === 0) return truncated
 
+    // Replicate the sequence batch_size times, padded to maxLen.
+    // The trained rababa model is fixed-shape [batch_size, max_len].
+    // We replicate the input row batch_size times (matching Ruby's
+    // diacritize_text) and pad each row to maxLen with the pad token.
+    const batchSize = this.config.batchSize
+    const maxLen = this.config.maxLen
+    const padToken = this.encoder.inputPadId
+    const flat: number[] = []
+    for (let b = 0; b < batchSize; b++) {
+      for (let i = 0; i < maxLen; i++) {
+        flat.push(i < sequence.length ? sequence[i]! : padToken)
+      }
+    }
+
     // Inference: {src, lengths}
     const src: Tensor = {
       name: "src",
       type: "int64",
-      data: new BigInt64Array(sequence.map((n) => BigInt(n))),
-      dims: [1, sequence.length],
+      data: new BigInt64Array(flat.map((n) => BigInt(n))),
+      dims: [batchSize, maxLen],
     }
     const lengths: Tensor = {
       name: "lengths",
       type: "int64",
-      data: new BigInt64Array([BigInt(sequence.length)]),
-      dims: [1],
+      data: new BigInt64Array(Array(batchSize).fill(BigInt(maxLen))),
+      dims: [batchSize],
     }
     const outputs = await this.session.run({ src, lengths })
 
@@ -93,7 +107,7 @@ class RababaModelImpl implements RababaModel {
     if (!out) throw new Error("Rababa model produced no output")
 
     const preds = argmaxBatch(out, sequence.length)
-    const combined = combineTextAndHaraqat(sequence, preds)
+    const combined = combineTextAndHaraqat(sequence, preds, this.encoder.inputPadId)
     return reconcileStrings(cleaned, combined)
   }
 
@@ -150,13 +164,18 @@ function argmaxBatch(tensor: Tensor, seqLen: number): number[] {
  * Combine input token IDs + haraqat IDs into a diacritized string.
  * Direct port of `combine_text_and_haraqat`.
  */
-function combineTextAndHaraqat(vecTxt: readonly number[], vecHaraqat: readonly number[]): string {
+function combineTextAndHaraqat(vecTxt: readonly number[], vecHaraqat: readonly number[], padId: number): string {
   let text = ""
   for (let i = 0; i < vecTxt.length; i++) {
     const txt = vecTxt[i]!
-    if (txt === 0) break // pad
+    if (txt === padId) break
     const haraq = vecHaraqat[i] ?? 0
-    text += (INPUT_ID_TO_SYMBOL[txt] ?? "") + (ID_TO_HARAAQAT[haraq] ?? "")
+    const symbol = INPUT_ID_TO_SYMBOL[txt] ?? ""
+    const haraqStr = ID_TO_HARAAQAT[haraq] ?? ""
+    // Skip the pad and unused start tokens in the target vocab —
+    // they decode to "P" or "" and shouldn't appear in output.
+    if (haraqStr === "P") continue
+    text += symbol + haraqStr
   }
   return text
 }
@@ -169,8 +188,9 @@ function combineTextAndHaraqat(vecTxt: readonly number[], vecHaraqat: readonly n
 export async function createRababaModel(params: {
   readonly session: InferenceSession
   readonly artifacts: ModelArtifacts
+  readonly config?: RababaConfig
 }): Promise<RababaModel> {
-  const config = parseConfig(params.artifacts["config.json"])
+  const config = params.config ?? parseConfig(params.artifacts["config.json"])
   return new RababaModelImpl(params.session, config)
 }
 

@@ -55,3 +55,30 @@ declare module "onnxruntime-web" {
     }
   }
 }
+
+declare module "@litertjs/core" {
+  export interface LitertResultTensor {
+    readonly dims: readonly number[]
+    moveTo(target: "wasm" | "webgpu"): Promise<LitertResultTensor>
+    toTypedArray(): Promise<unknown>
+    delete(): Promise<void>
+  }
+  export interface LitertResult {
+    readonly length: number
+    [index: number]: LitertResultTensor
+    delete(): Promise<void>
+  }
+  export interface LitertModel {
+    run(inputs: unknown | unknown[]): Promise<LitertResult>
+    delete(): Promise<void>
+  }
+  export const loadLiteRt: (
+    wasmPath: string,
+    opts?: { jspi?: boolean },
+  ) => Promise<void>
+  export const loadAndCompile: (
+    modelUrl: string,
+    opts: { accelerator: string },
+  ) => Promise<LitertModel>
+  export const Tensor: new (data: unknown, dims: readonly number[]) => unknown
+}

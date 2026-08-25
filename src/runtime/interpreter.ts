@@ -136,19 +136,21 @@ async function executeFuncallAsync(
   rule: { readonly name: string; readonly kwargs?: Readonly<Record<string, unknown>> },
   ctx: ExecutionContext,
 ): Promise<void> {
-  // Unified ML dispatch: any function in ASYNC_FUNCTIONS is an ML model.
-  // The interpreter doesn't know whether it's rababa, secryst, or a
-  // future model — it just calls MLModel.transform().
-  //
-  // OCP: adding a new ML function = registering it in ASYNC_FUNCTIONS
-  // + having its model implement MLModel.transform. This function
-  // never changes.
+  // Rababa has its own config-keyed model registry (see stdlib/ml.ts).
+  // The config "200" maps to a specific model URL and rababa-specific
+  // config — bypass the generic ML registry, which is keyed by task
+  // version and doesn't know about rababa configs.
+  if (rule.name === "rababa") {
+    const { rababa } = await import("../stdlib/ml.js")
+    ctx.current = await rababa(ctx.current, rule.kwargs as { config?: string })
+    return
+  }
+  // Other ASYNC_FUNCTIONS (secryst, etc.) still go through the generic
+  // ML registry.
   if (ASYNC_FUNCTIONS.has(rule.name)) {
     const { loadModel } = await import("../ml/index.js")
     const modelId = (rule.kwargs?.config ?? rule.kwargs?.model ?? "default") as string
-    const model = await loadModel({ kind: rule.name as "rababa" | "secryst", id: modelId })
-    // MLModel.transform handles everything: diacritization, transliteration,
-    // line-by-line processing, etc. The interpreter is domain-agnostic.
+    const model = await loadModel({ kind: rule.name as "secryst", id: modelId })
     ctx.current = await model.transform(ctx.current)
     return
   }

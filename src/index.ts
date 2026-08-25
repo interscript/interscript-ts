@@ -66,6 +66,16 @@ export type { LoadStrategy, MapLoader } from "./loader.js"
 // (CLI, server tests) should import directly from `./loaders.node.js`.
 export { normaliseMap, bundledStrategy } from "./loaders.js"
 export { httpStrategy, type HttpStrategyOptions } from "./http-loader.js"
+export { iscStrategy, iscBundledStrategy, type IscStrategyOptions } from "./isc/loader.js"
+export type { IscDocument, IscItem, IscRule, IscStage, IscStageItem, IscTest, IscConstraint } from "./isc/types.js"
+export { parseIsc } from "./isc/parser.js"
+export { IscParseError } from "./isc/types.js"
+export { iscToCompiledMap } from "./isc/converter.js"
+export {
+  setRababaConfig,
+  resetRababaConfigs,
+  type RababaConfigEntry,
+} from "./stdlib/ml.js"
 
 export interface InterscriptConfig {
   /** Strategies consulted in order when loading a map. */

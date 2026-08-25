@@ -18,6 +18,13 @@ jobs:
         node: [20, 22]
     steps:
       - uses: actions/checkout@v7
+      - name: Checkout maps repo
+        uses: actions/checkout@v7
+        with:
+          repository: interscript/maps
+          path: _maps
+      - name: Symlink maps into ../maps
+        run: ln -s "$PWD/_maps" "$GITHUB_WORKSPACE/maps"
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
@@ -27,6 +34,29 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run format:check
+
+  isc-parity:
+    name: ISC parser parity (all 289 maps)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Checkout maps repo
+        uses: actions/checkout@v7
+        with:
+          repository: interscript/maps
+          path: _maps
+      - name: Symlink maps into ../maps
+        run: ln -s "$PWD/_maps" "$GITHUB_WORKSPACE/maps"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Parse all .isc files
+        run: npx tsx --eval "import {readdirSync} from 'fs'; import {parseIsc} from './src/isc/parser.ts'; const dir='../maps/maps'; const files=readdirSync(dir).filter(f=>f.endsWith('.isc')); let ok=0; for (const f of files){try{parseIsc(require('fs').readFileSync(dir+'/'+f,'utf8'),f);ok++}catch(e){console.error(f+': '+e.message);process.exit(1)}} console.log('Parsed '+ok+'/'+files.length);"
+      - name: End-to-end parity (target 100%)
+        run: npx vitest run test/isc/end-to-end.test.ts
 
   coverage:
     name: Coverage

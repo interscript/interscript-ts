@@ -79,8 +79,19 @@ export const HARAAQAT_TO_ID: Readonly<Record<string, number>> = Object.freeze(
 /**
  * Reverse lookup: index → haraqat string. Matches the encoder's
  * `@target_id_to_symbol`.
+ *
+ * The model's target vocab is `[@pad] + ALL_POSSIBLE_HARAQAT.keys`,
+ * so index 0 = pad ("P", treated as no-op) and indices 1..15 are
+ * the haraqat combinations. The model output has 17 classes (extra
+ * slot for start token "s" used during training); the last index
+ * is unused at inference time and decodes to "".
  */
-export const ID_TO_HARAAQAT: readonly string[] = Object.keys(ALL_POSSIBLE_HARAQAT)
+const TARGET_PAD_SYMBOL = "P"
+export const ID_TO_HARAAQAT: readonly string[] = [
+  TARGET_PAD_SYMBOL,
+  ...Object.keys(ALL_POSSIBLE_HARAQAT),
+  "",
+]
 
 /**
  * Input vocab used by BasicArabicEncoder. Index 0 = pad ("P");
