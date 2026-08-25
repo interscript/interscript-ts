@@ -19,9 +19,7 @@ export class Vocab {
   constructor(tokens: readonly string[], specials: readonly string[] = []) {
     const all = [...specials, ...tokens]
     this.itos = all
-    this.stoi = Object.freeze(
-      Object.fromEntries(all.map((t, i) => [t, i])),
-    )
+    this.stoi = Object.freeze(Object.fromEntries(all.map((t, i) => [t, i])))
     this.length = all.length
   }
 

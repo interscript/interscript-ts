@@ -41,26 +41,20 @@ describe("detectInMaps", () => {
 
   it("returns candidates sorted by distance", () => {
     // "Київ" should match the Ukrainian system best.
-    const results = detectInMaps(
-      "Антон",
-      "Anton",
-      loader,
-      {},
-      ["bgnpcgn-ukr-Cyrl-Latn-2019", "bgnpcgn-deu-Latn-Latn-2000"],
-    )
+    const results = detectInMaps("Антон", "Anton", loader, {}, [
+      "bgnpcgn-ukr-Cyrl-Latn-2019",
+      "bgnpcgn-deu-Latn-Latn-2000",
+    ])
     expect(results.length).toBe(2)
     expect(results[0]!.distance).toBeLessThanOrEqual(results[1]!.distance)
     expect(results[0]!.mapName).toBe("bgnpcgn-ukr-Cyrl-Latn-2019")
   })
 
   it("respects mapPattern filter", () => {
-    const results = detectInMaps(
-      "x",
-      "y",
-      loader,
-      { mapPattern: "bgnpcgn-*" },
-      ["bgnpcgn-ukr-Cyrl-Latn-2019", "odni-rus-Cyrl-Latn-2015"],
-    )
+    const results = detectInMaps("x", "y", loader, { mapPattern: "bgnpcgn-*" }, [
+      "bgnpcgn-ukr-Cyrl-Latn-2019",
+      "odni-rus-Cyrl-Latn-2015",
+    ])
     expect(results.every((r) => r.mapName.startsWith("bgnpcgn-"))).toBe(true)
   })
 

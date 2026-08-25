@@ -94,7 +94,7 @@ describe("end-to-end transliteration", () => {
   bench(
     "transliterate bgnpcgn-deu (parallel rules)",
     () => {
-      transliterate("bgnpcgn-deu-Latn-Latn-2000", "Tschüß! " .repeat(50))
+      transliterate("bgnpcgn-deu-Latn-Latn-2000", "Tschüß! ".repeat(50))
     },
     { iterations: 20 },
   )

@@ -7,7 +7,6 @@
 
 import { registerModel } from "../../registry.js"
 import { createSecrystModel } from "./translator.js"
-import type { SecrystModel } from "./translator.js"
 
 registerModel("secryst", async (params) => createSecrystModel(params))
 

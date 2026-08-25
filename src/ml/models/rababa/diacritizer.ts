@@ -12,14 +12,7 @@
  * InferenceSession + config artifacts.
  */
 
-import type {
-  InferenceSession,
-  Model,
-  MLModel,
-  ModelArtifacts,
-  ModelKind,
-  Tensor,
-} from "../../types.js"
+import type { InferenceSession, MLModel, ModelArtifacts, ModelKind, Tensor } from "../../types.js"
 import { ArabicEncoder } from "./encoder.js"
 import { reconcileStrings } from "./reconciler.js"
 import { ID_TO_HARAAQAT, INPUT_ID_TO_SYMBOL } from "./haraqat.js"
@@ -147,9 +140,8 @@ function argmaxBatch(tensor: Tensor, seqLen: number): number[] {
     let bestVal = -Infinity
     const base = i * classCount
     for (let c = 0; c < classCount; c++) {
-      const v = typeof data[base + c] === "bigint"
-        ? Number(data[base + c])
-        : (data[base + c] as number)
+      const v =
+        typeof data[base + c] === "bigint" ? Number(data[base + c]) : (data[base + c] as number)
       if (v > bestVal) {
         bestVal = v
         best = c
@@ -164,7 +156,11 @@ function argmaxBatch(tensor: Tensor, seqLen: number): number[] {
  * Combine input token IDs + haraqat IDs into a diacritized string.
  * Direct port of `combine_text_and_haraqat`.
  */
-function combineTextAndHaraqat(vecTxt: readonly number[], vecHaraqat: readonly number[], padId: number): string {
+function combineTextAndHaraqat(
+  vecTxt: readonly number[],
+  vecHaraqat: readonly number[],
+  padId: number,
+): string {
   let text = ""
   for (let i = 0; i < vecTxt.length; i++) {
     const txt = vecTxt[i]!
@@ -197,7 +193,8 @@ export async function createRababaModel(params: {
 function parseConfig(raw: string | Uint8Array | undefined): RababaConfig {
   if (!raw) return DEFAULT_CONFIG
   try {
-    const json = typeof raw === "string" ? JSON.parse(raw) : JSON.parse(new TextDecoder().decode(raw))
+    const json =
+      typeof raw === "string" ? JSON.parse(raw) : JSON.parse(new TextDecoder().decode(raw))
     return {
       maxLen: Number(json.max_len ?? json.maxLen ?? DEFAULT_CONFIG.maxLen),
       batchSize: Number(json.batch_size ?? json.batchSize ?? DEFAULT_CONFIG.batchSize),

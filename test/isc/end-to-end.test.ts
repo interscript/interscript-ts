@@ -12,7 +12,7 @@ import { readFileSync, readdirSync, existsSync } from "fs"
 import { join } from "path"
 import { parseIsc } from "../../src/isc/parser.ts"
 import { iscBundledStrategy } from "../../src/isc/loader.ts"
-import { configure, reset, transliterate } from "../../src/index.js"
+import { configure, transliterate } from "../../src/index.js"
 
 const MAPS_DIR = join(__dirname, "..", "..", "..", "maps", "maps")
 
@@ -92,7 +92,9 @@ describe.skipIf(cases.length === 0)("ISC end-to-end transliteration parity", () 
         else {
           failed++
           if (sampleFailures.length < 5) {
-            sampleFailures.push(`${c.code}: "${c.input.slice(0, 20)}" → "${actual.slice(0, 20)}" (expected "${c.expected.slice(0, 20)}")`)
+            sampleFailures.push(
+              `${c.code}: "${c.input.slice(0, 20)}" → "${actual.slice(0, 20)}" (expected "${c.expected.slice(0, 20)}")`,
+            )
           }
         }
       } catch {
@@ -103,6 +105,7 @@ describe.skipIf(cases.length === 0)("ISC end-to-end transliteration parity", () 
     if (rate < 99.5) {
       console.log("Sample failures:\n" + sampleFailures.join("\n"))
     }
+    expect(passed + failed).toBe(cases.length)
     expect(rate).toBeGreaterThanOrEqual(99.5)
   }, 120000)
 })

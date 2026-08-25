@@ -33,7 +33,8 @@ describe("parseIsc — system block", () => {
 
 describe("parseIsc — metadata", () => {
   it("parses generic key-value fields", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 metadata {
   authority_id foo
   id 2026
@@ -42,7 +43,8 @@ metadata {
   destination_script Latn
   name Test Map
   url https://example.com/test
-}`))
+}`),
+    )
     expect(doc.metadata.authority_id).toBe("foo")
     expect(doc.metadata.id).toBe("2026")
     expect(doc.metadata.language).toBe("iso-639-2:eng")
@@ -61,44 +63,52 @@ metadata {
   })
 
   it("parses notes block in note-list form", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 metadata {
   notes {
     note "First note"
     note "Second note"
   }
-}`))
+}`),
+    )
     expect(doc.metadata.notes).toEqual(["First note", "Second note"])
   })
 
   it("parses notes block in raw-text form", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 metadata {
   notes {
     First line of free text.
     Second line.
   }
-}`))
+}`),
+    )
     expect(doc.metadata.notes).toContain("First line of free text.")
     expect(doc.metadata.notes).toContain("Second line.")
   })
 
   it("parses empty notes block", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 metadata {
   notes { }
-}`))
+}`),
+    )
     expect(doc.metadata.notes).toBe("")
   })
 })
 
 describe("parseIsc — tests", () => {
   it("parses double-quoted tests with ->", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 tests {
   "hello" ->  "HELLO"
   "world" ->  "WORLD"
-}`))
+}`),
+    )
     expect(doc.tests).toEqual([
       { input: "hello", expected: "HELLO" },
       { input: "world", expected: "WORLD" },
@@ -106,47 +116,57 @@ tests {
   })
 
   it("parses single-quoted tests", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 tests {
   'hello' ->  'HELLO'
-}`))
+}`),
+    )
     expect(doc.tests[0]?.input).toBe("hello")
     expect(doc.tests[0]?.expected).toBe("HELLO")
   })
 
   it("parses test with note", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 tests {
   "a" ->  "A" note "uppercase a"
-}`))
+}`),
+    )
     expect(doc.tests[0]?.note).toBe("uppercase a")
   })
 
   it("skips comment lines in tests", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 tests {
   # comment
   "a" ->  "A"
-}`))
+}`),
+    )
     expect(doc.tests.length).toBe(1)
   })
 })
 
 describe("parseIsc — aliases", () => {
   it("parses alias with string value", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 aliases {
   foo = "bar"
-}`))
+}`),
+    )
     expect(doc.aliases[0]?.name).toBe("foo")
     expect(doc.aliases[0]?.value).toEqual({ type: "string", value: "bar" })
   })
 
   it("parses alias with any-of-chars value", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 aliases {
   vowels = any("aeiou")
-}`))
+}`),
+    )
     expect(doc.aliases[0]?.value).toMatchObject({
       type: "set",
       items: [
@@ -160,18 +180,22 @@ aliases {
   })
 
   it("parses alias with range value", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 aliases {
   lower = any("a".."z")
-}`))
+}`),
+    )
     expect(doc.aliases[0]?.value).toMatchObject({ type: "range", lo: "a", hi: "z" })
   })
 
   it("parses alias with array of multi-char strings", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 aliases {
   multi = any(["Lj", "Nj", "Dž"])
-}`))
+}`),
+    )
     const v = doc.aliases[0]?.value
     expect(v?.type).toBe("set")
     if (v?.type === "set") {
@@ -181,10 +205,12 @@ aliases {
   })
 
   it("parses alias with nested any expressions", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 aliases {
   combo = any([any("A".."Z"), any("Ë")])
-}`))
+}`),
+    )
     const v = doc.aliases[0]?.value
     expect(v?.type).toBe("set")
     if (v?.type === "set") {
@@ -194,10 +220,12 @@ aliases {
   })
 
   it("parses alias with identifier references", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 aliases {
   combo = any([digit, space])
-}`))
+}`),
+    )
     const v = doc.aliases[0]?.value
     expect(v?.type).toBe("set")
     if (v?.type === "set") {
@@ -221,10 +249,12 @@ describe("parseIsc — dependencies", () => {
 
 describe("parseIsc — stages", () => {
   it("parses a bare sub rule", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   sub "a" "b"
-}`))
+}`),
+    )
     expect(doc.stages[0]?.name).toBe("main")
     expect(doc.stages[0]?.body[0]).toMatchObject({
       kind: "bare_rule",
@@ -233,13 +263,15 @@ stage main {
   })
 
   it("parses a parallel block", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   parallel {
     sub "a" "A"
     sub "b" "B"
   }
-}`))
+}`),
+    )
     const body = doc.stages[0]?.body[0]
     expect(body?.kind).toBe("parallel")
     if (body?.kind === "parallel") {
@@ -248,17 +280,20 @@ stage main {
   })
 
   it("parses a sequence block", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   sequence {
     sub "a" "A"
   }
-}`))
+}`),
+    )
     expect(doc.stages[0]?.body[0]?.kind).toBe("sequence")
   })
 
   it("parses block-form sub with constraints", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   sub {
     from "a"
@@ -266,7 +301,8 @@ stage main {
     before any("z")
     after boundary
   }
-}`))
+}`),
+    )
     const body = doc.stages[0]?.body[0]
     expect(body?.kind).toBe("bare_rule")
     if (body?.kind === "bare_rule") {
@@ -277,10 +313,12 @@ stage main {
   })
 
   it("parses compact sub with constraints", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   sub "a" "A" before boundary
-}`))
+}`),
+    )
     const body = doc.stages[0]?.body[0]
     if (body?.kind === "bare_rule") {
       expect(body.rule.constraints[0]?.kind).toBe("before")
@@ -288,10 +326,12 @@ stage main {
   })
 
   it("parses run map.X.stage.Y", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   run map.foo.stage.main
-}`))
+}`),
+    )
     expect(doc.stages[0]?.body[0]).toMatchObject({
       kind: "run",
       dependency: "foo",
@@ -300,10 +340,12 @@ stage main {
   })
 
   it("parses run stage.X", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   run stage.sub
-}`))
+}`),
+    )
     expect(doc.stages[0]?.body[0]).toMatchObject({
       kind: "run",
       stage: "sub",
@@ -311,10 +353,12 @@ stage main {
   })
 
   it("parses separate with separator", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   separate separator "-"
-}`))
+}`),
+    )
     const body = doc.stages[0]?.body[0]
     expect(body?.kind).toBe("separate")
     if (body?.kind === "separate") {
@@ -323,41 +367,49 @@ stage main {
   })
 
   it("parses bare separate", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   separate
-}`))
+}`),
+    )
     expect(doc.stages[0]?.body[0]?.kind).toBe("separate")
   })
 
   it("parses compose / decompose", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   compose
   decompose
-}`))
+}`),
+    )
     expect(doc.stages[0]?.body[0]?.kind).toBe("compose")
     expect(doc.stages[0]?.body[1]?.kind).toBe("decompose")
   })
 
   it("parses string_case ops (upcase, downcase)", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   upcase
   downcase
-}`))
+}`),
+    )
     expect(doc.stages[0]?.body[0]).toMatchObject({ kind: "string_case", op: "upcase" })
     expect(doc.stages[0]?.body[1]).toMatchObject({ kind: "string_case", op: "downcase" })
   })
 
   it("silently drops stray identifiers in stage body for Ruby parity", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   parallel {
 s
     sub "a" "A"
   }
-}`))
+}`),
+    )
     const parallel = doc.stages[0]?.body[0]
     if (parallel?.kind === "parallel") {
       expect(parallel.rules.length).toBe(1)
@@ -392,13 +444,15 @@ describe("parseIsc — items", () => {
   })
 
   it("parses primitives (boundary, space, line_start, line_end)", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 aliases {
   b = boundary
   s = space
   ls = line_start
   le = line_end
-}`))
+}`),
+    )
     expect(doc.aliases[0]?.value).toEqual({ type: "primitive", name: "boundary" })
     expect(doc.aliases[1]?.value).toEqual({ type: "primitive", name: "space" })
     expect(doc.aliases[2]?.value).toEqual({ type: "primitive", name: "line_start" })
@@ -480,30 +534,36 @@ aliases {
 
 describe("parseIsc — comments and whitespace", () => {
   it("skips line comments", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 # top-level comment
 stage main {
   # inner comment
   sub "a" "A"
-}`))
+}`),
+    )
     expect(doc.stages[0]?.body[0]).toMatchObject({ kind: "bare_rule" })
   })
 
   it("handles blank lines between constructs", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 
 stage main {
 
   sub "a" "A"
 
-}`))
+}`),
+    )
     expect(doc.stages[0]?.body[0]).toMatchObject({ kind: "bare_rule" })
   })
 })
 
 describe("parseIsc — error reporting", () => {
   it("reports line and column", () => {
-    expect(() => parseIsc(`system "x" {\nstage main {\n  sub\n}\n}`, "t.isc")).toThrow(IscParseError)
+    expect(() => parseIsc(`system "x" {\nstage main {\n  sub\n}\n}`, "t.isc")).toThrow(
+      IscParseError,
+    )
     try {
       parseIsc(`system "x" {\nstage main {\n  sub\n}\n}`, "t.isc")
     } catch (e) {
@@ -521,13 +581,15 @@ describe("parseIsc — error reporting", () => {
 
 describe("iscToCompiledMap — runtime conversion", () => {
   it("converts a minimal document", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 aliases { v = any("aeiou") }
 stage main {
   parallel {
     sub "a" "A"
   }
-}`))
+}`),
+    )
     const json = iscToCompiledMap(doc)
     expect(json.schemaVersion).toBe(1)
     expect(json.systemCode).toBe("TEST:test:Latn:Latn:2026")
@@ -537,11 +599,13 @@ stage main {
   })
 
   it("resolves dependency aliases in run rules", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 dependency "alalc-amh-Ethi-Latn-1997" as ethilatn
 stage main {
   run map.ethilatn.stage.main
-}`))
+}`),
+    )
     const json = iscToCompiledMap(doc)
     expect(json.dependencies).toEqual(["alalc-amh-Ethi-Latn-1997"])
     const rule = json.stages[0]?.rules[0]
@@ -553,13 +617,15 @@ stage main {
   })
 
   it("emits FuncallInline for `to upcase`", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   sub {
     from "a"
     to upcase
   }
-}`))
+}`),
+    )
     const json = iscToCompiledMap(doc)
     const rule = json.stages[0]?.rules[0]
     expect(rule).toMatchObject({
@@ -569,10 +635,12 @@ stage main {
   })
 
   it("emits FuncallRule for separate", () => {
-    const doc = parseIsc(minimalWrap(`
+    const doc = parseIsc(
+      minimalWrap(`
 stage main {
   separate separator "-"
-}`))
+}`),
+    )
     const json = iscToCompiledMap(doc)
     const rule = json.stages[0]?.rules[0]
     expect(rule).toMatchObject({

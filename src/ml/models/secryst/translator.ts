@@ -87,9 +87,10 @@ class SecrystModelImpl implements SecrystModel {
       let bestId = 0
       let bestVal = -Infinity
       for (let c = 0; c < classCount; c++) {
-        const v = typeof data[lastPosBase + c] === "bigint"
-          ? Number(data[lastPosBase + c])
-          : (data[lastPosBase + c] as number)
+        const v =
+          typeof data[lastPosBase + c] === "bigint"
+            ? Number(data[lastPosBase + c])
+            : (data[lastPosBase + c] as number)
         if (v > bestVal) {
           bestVal = v
           bestId = c
@@ -130,9 +131,7 @@ export async function createSecrystModel(params: {
   if (!vocabsRaw) {
     throw new Error("Secryst model missing vocabs.yaml")
   }
-  const yamlStr = typeof vocabsRaw === "string"
-    ? vocabsRaw
-    : new TextDecoder().decode(vocabsRaw)
+  const yamlStr = typeof vocabsRaw === "string" ? vocabsRaw : new TextDecoder().decode(vocabsRaw)
   const data = parseVocabYaml(yamlStr)
   const { input, target } = buildVocabs(data)
   return new SecrystModelImpl(params.session, input, target)

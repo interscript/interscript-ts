@@ -63,10 +63,7 @@ interface LitertModel {
 
 interface LitertCoreModule {
   loadLiteRt(wasmPath: string, opts?: { jspi?: boolean }): Promise<void>
-  loadAndCompile(
-    modelUrl: string,
-    opts: { accelerator: string },
-  ): Promise<LitertModel>
+  loadAndCompile(modelUrl: string, opts: { accelerator: string }): Promise<LitertModel>
   Tensor: new (data: TensorData, dims: readonly number[]) => unknown
 }
 

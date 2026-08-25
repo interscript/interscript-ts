@@ -36,10 +36,7 @@ interface Pivot {
  * Find indices where `dOriginal` and `dDiacritized` agree. Two-pointer
  * scan: for each char in diacritized, find next matching char in original.
  */
-function buildPivotMap(
-  dOriginal: readonly string[],
-  dDiacritized: readonly string[],
-): Pivot[] {
+function buildPivotMap(dOriginal: readonly string[], dDiacritized: readonly string[]): Pivot[] {
   const out: Pivot[] = []
   let idxOri = 0
   for (let idxDia = 0; idxDia < dDiacritized.length; idxDia++) {

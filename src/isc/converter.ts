@@ -64,7 +64,10 @@ export function iscToCompiledMap(doc: IscDocument): CompiledMapJson {
 
 type DepResolver = (name: string) => string
 
-function convertStage(stage: { name: string; body: readonly IscStageItem[] }, resolveDep: DepResolver): Stage {
+function convertStage(
+  stage: { name: string; body: readonly IscStageItem[] },
+  resolveDep: DepResolver,
+): Stage {
   return {
     kind: "stage",
     name: stage.name,
@@ -92,7 +95,11 @@ function convertStageItem(item: IscStageItem, resolveDep: DepResolver): Rule {
     }
     case "separate": {
       if (item.separator && item.separator.type === "string") {
-        const r: FuncallRule = { kind: "funcall", name: "separate", kwargs: { separator: item.separator.value } }
+        const r: FuncallRule = {
+          kind: "funcall",
+          name: "separate",
+          kwargs: { separator: item.separator.value },
+        }
         return r
       }
       const r: FuncallRule = { kind: "funcall", name: "separate" }
@@ -126,9 +133,8 @@ function convertRule(rule: IscRule): SubRule {
   // `to` may be a function (upcase/downcase/title_case/etc.) — represented
   // as FuncallInline rather than an Item.
   const toItem = rule.to
-  const to: Item | FuncallInline = toItem.type === "function"
-    ? { kind: "funcall_inline", name: toItem.name }
-    : convertItem(toItem)
+  const to: Item | FuncallInline =
+    toItem.type === "function" ? { kind: "funcall_inline", name: toItem.name } : convertItem(toItem)
 
   const r: SubRule = {
     kind: "sub",

@@ -63,13 +63,13 @@ describe("Secryst attention masks", () => {
   it("causalMask blocks future positions", () => {
     const mask = causalMask(3)
     // Row 0: can only see position 0
-    expect(mask[0]).toBe(1)  // [0,0]
-    expect(mask[1]).toBe(0)  // [0,1]
-    expect(mask[2]).toBe(0)  // [0,2]
+    expect(mask[0]).toBe(1) // [0,0]
+    expect(mask[1]).toBe(0) // [0,1]
+    expect(mask[2]).toBe(0) // [0,2]
     // Row 1: can see 0 and 1
-    expect(mask[3]).toBe(1)  // [1,0]
-    expect(mask[4]).toBe(1)  // [1,1]
-    expect(mask[5]).toBe(0)  // [1,2]
+    expect(mask[3]).toBe(1) // [1,0]
+    expect(mask[4]).toBe(1) // [1,1]
+    expect(mask[5]).toBe(0) // [1,2]
     // Row 2: can see 0, 1, 2
     expect(mask[6]).toBe(1)
     expect(mask[7]).toBe(1)

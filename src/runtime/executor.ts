@@ -10,7 +10,12 @@
 
 import type { Item, Rule, SubRule } from "../types.js"
 import type { ExecutionContext } from "./context.js"
-import { compileItem, compileToLiteral, expandFromLiterals, maxLengthOfItem } from "./compile-item.js"
+import {
+  compileItem,
+  compileToLiteral,
+  expandFromLiterals,
+  maxLengthOfItem,
+} from "./compile-item.js"
 import { MapLogicError } from "../errors.js"
 import {
   compileParallelTree,
@@ -24,7 +29,6 @@ import {
   compose,
   decompose,
 } from "../stdlib.js"
-import { rababa, rababaReverse } from "../stdlib/ml.js"
 
 type RuleKind = Rule["kind"]
 type RuleExecutorFor<K extends RuleKind> = (
@@ -33,14 +37,15 @@ type RuleExecutorFor<K extends RuleKind> = (
 ) => void
 
 /** Built-in function registry. Mirrors Interscript.functions.* in Ruby. */
-const BUILTIN_FUNCTIONS: Record<string, (input: string, opts?: Record<string, unknown>) => string> = {
-  downcase,
-  upcase,
-  title_case: (i, o) => titleCase(i, o ?? {}),
-  separate: (i, o) => separate(i, o ?? {}),
-  compose,
-  decompose,
-}
+const BUILTIN_FUNCTIONS: Record<string, (input: string, opts?: Record<string, unknown>) => string> =
+  {
+    downcase,
+    upcase,
+    title_case: (i, o) => titleCase(i, o ?? {}),
+    separate: (i, o) => separate(i, o ?? {}),
+    compose,
+    decompose,
+  }
 
 function resolveFunction(ctx: ExecutionContext, name: string) {
   const fromMap = ctx.functions.get(name)?.impl
@@ -101,7 +106,11 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
     // like boundary, no captures). If any rule fails this check, the
     // whole block goes through megaregexp.
     const treeCompatible = (r: SubRule) =>
-      !r.before && !r.after && !r.notBefore && !r.notAfter && expandFromLiterals(r.from!, ctx) !== null
+      !r.before &&
+      !r.after &&
+      !r.notBefore &&
+      !r.notAfter &&
+      expandFromLiterals(r.from!, ctx) !== null
 
     const anyConstrained = subRules.some((r) => !treeCompatible(r))
 

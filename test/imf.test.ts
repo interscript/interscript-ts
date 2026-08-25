@@ -39,10 +39,8 @@ describe("IMF zip loading", () => {
   it("loads sessions from verified bytes", async () => {
     const model = await IMFModel.fromZipBytes(fixtureZip)
     expect(model.id).toBe("tiny-1.0")
-      await model.dispose()
-    },
-    600_000,
-  )
+    await model.dispose()
+  }, 600_000)
 })
 
 describe("registry", () => {
@@ -168,17 +166,18 @@ describe("golden set e2e", () => {
   it.skipIf(!e2eZip)(
     "matches the Python reference byte-for-byte",
     async () => {
-    const zip = e2eZip!
-    const model = await IMFModel.load(zip)
-    const goldenPath = process.env["SECRYST_GOLDEN"]
-      ?? "/Users/mulgogi/src/interscript/ml-models/golden/khm-latn-100.jsonl"
-    const rows = readFileSync(goldenPath, "utf-8")
-      .split("\n")
-      .filter((l) => l.trim())
-      .map((l) => JSON.parse(l) as { input: string; output: string })
-    for (const row of rows) {
-      expect(await model.translate(row.input, 128), row.input).toBe(row.output)
-    }
+      const zip = e2eZip!
+      const model = await IMFModel.load(zip)
+      const goldenPath =
+        process.env["SECRYST_GOLDEN"] ??
+        "/Users/mulgogi/src/interscript/ml-models/golden/khm-latn-100.jsonl"
+      const rows = readFileSync(goldenPath, "utf-8")
+        .split("\n")
+        .filter((l) => l.trim())
+        .map((l) => JSON.parse(l) as { input: string; output: string })
+      for (const row of rows) {
+        expect(await model.translate(row.input, 128), row.input).toBe(row.output)
+      }
       await model.dispose()
     },
     600_000,

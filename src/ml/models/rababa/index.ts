@@ -7,7 +7,6 @@
 
 import { registerModel } from "../../registry.js"
 import { createRababaModel } from "./diacritizer.js"
-import type { RababaModel } from "./diacritizer.js"
 
 registerModel("rababa", async (params) => createRababaModel(params))
 

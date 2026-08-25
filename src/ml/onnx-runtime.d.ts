@@ -36,7 +36,10 @@ declare module "onnxruntime-web" {
   export interface OrtSession {
     readonly inputNames: readonly string[]
     readonly outputNames: readonly string[]
-    run(feeds: Record<string, unknown>, options?: Record<string, unknown>): Promise<Record<string, OrtTensor>>
+    run(
+      feeds: Record<string, unknown>,
+      options?: Record<string, unknown>,
+    ): Promise<Record<string, OrtTensor>>
     release(): Promise<void>
   }
   export const Tensor: new (type: string, data: unknown, dims: readonly number[]) => OrtTensor
@@ -72,10 +75,7 @@ declare module "@litertjs/core" {
     run(inputs: unknown | unknown[]): Promise<LitertResult>
     delete(): Promise<void>
   }
-  export const loadLiteRt: (
-    wasmPath: string,
-    opts?: { jspi?: boolean },
-  ) => Promise<void>
+  export const loadLiteRt: (wasmPath: string, opts?: { jspi?: boolean }) => Promise<void>
   export const loadAndCompile: (
     modelUrl: string,
     opts: { accelerator: string },

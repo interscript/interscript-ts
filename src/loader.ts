@@ -18,9 +18,9 @@
 import type { CompiledMap, SystemCode } from "./types.js"
 import { MapNotFoundError } from "./errors.js"
 
-export type LoadStrategy = ((
+export type LoadStrategy = (
   systemCode: SystemCode,
-) => CompiledMap | undefined | Promise<CompiledMap | undefined>)
+) => CompiledMap | undefined | Promise<CompiledMap | undefined>
 
 interface MapLoaderOptions {
   /** Called when a map is first loaded so the loader can track it. */

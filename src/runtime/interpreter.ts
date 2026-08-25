@@ -64,7 +64,7 @@ export function executeStage(
   if (containsAsyncFuncalls(stage.rules)) {
     throw new Error(
       `Stage "${stageName}" contains ML function calls (rababa/secryst). ` +
-      `Use transliterateAsync() instead of transliterate().`,
+        `Use transliterateAsync() instead of transliterate().`,
     )
   }
 
@@ -111,10 +111,7 @@ export async function executeStageAsync(
  * All non-funcall rule kinds delegate to the sync executor (they're
  * already synchronous). Only funcall needs special handling.
  */
-async function executeRuleAsync(
-  rule: Rule,
-  ctx: ExecutionContext,
-): Promise<void> {
+async function executeRuleAsync(rule: Rule, ctx: ExecutionContext): Promise<void> {
   if (rule.kind === "funcall") {
     await executeFuncallAsync(rule, ctx)
     return

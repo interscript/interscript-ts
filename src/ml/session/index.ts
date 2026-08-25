@@ -25,7 +25,7 @@ export type { LitertSessionOptions } from "./litert-web.js"
  * Workers, Deno) might prefer Web.
  */
 export function detectBackend(): "node" | "web" | "unknown" {
-  const g = globalThis as { process?: { versions?: { node?: string } }, self?: unknown }
+  const g = globalThis as { process?: { versions?: { node?: string } }; self?: unknown }
   if (g.process?.versions?.node) {
     return "node"
   }
@@ -80,7 +80,7 @@ export async function createSession(
     return (await import("./litert-web.js")).createLitertSession(modelData, litertOpts)
   }
 
-  const backend = opts.backend ?? detectBackend() === "node" ? "node" : "web"
+  const backend = (opts.backend ?? detectBackend() === "node") ? "node" : "web"
   if (backend === "node") {
     return (await import("./onnx-node.js")).createNodeSession(modelData)
   }

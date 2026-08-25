@@ -194,7 +194,7 @@ export function parallelMegaregexp(input: string, rules: readonly MegaregexpRule
     for (let i = 0; i < rules.length; i++) {
       if (groups[`__r${i}`] !== undefined) {
         const match = args[0] as string
-        const captures = (args.slice(1, -2) as (string | undefined)[])
+        const captures = args.slice(1, -2) as (string | undefined)[]
         return rules[i]!.replace(match, captures)
       }
     }

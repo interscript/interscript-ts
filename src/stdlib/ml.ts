@@ -27,7 +27,8 @@ export interface RababaConfigEntry {
 
 const DEFAULT_RABABA_CONFIGS: Readonly<Record<string, RababaConfigEntry>> = Object.freeze({
   "200": Object.freeze({
-    model: "https://github.com/secryst/rababa-models/releases/download/0.1/diacritization_model_arabic.onnx",
+    model:
+      "https://github.com/secryst/rababa-models/releases/download/0.1/diacritization_model_arabic.onnx",
     config: Object.freeze({
       session_name: "base",
       text_encoder: "ArabicEncoderWithStartSymbol",
@@ -76,7 +77,8 @@ function buildRababaConfig(raw: Readonly<Record<string, unknown>>): RababaConfig
   return {
     maxLen: Number(raw.max_len ?? raw.maxLen ?? 200),
     batchSize: Number(raw.batch_size ?? raw.batchSize ?? 32),
-    textEncoder: (raw.text_encoder ?? "ArabicEncoderWithStartSymbol") as RababaConfig["textEncoder"],
+    textEncoder: (raw.text_encoder ??
+      "ArabicEncoderWithStartSymbol") as RababaConfig["textEncoder"],
     textCleaner: (raw.text_cleaner ?? "valid_arabic_cleaners") as RababaConfig["textCleaner"],
   }
 }

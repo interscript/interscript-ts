@@ -270,8 +270,14 @@ const STDLIB_ALIASES: Readonly<Record<string, CompiledItem>> = Object.freeze({
   // most maps work because their boundary usage is at start-of-string
   // or after whitespace — cases where ASCII \b happens to coincide
   // with the Unicode form.
-  boundary: { re: "(?:(?<![\\p{L}\\p{M}])(?=[\\p{L}\\p{M}])|(?<=[\\p{L}\\p{M}])(?![\\p{L}\\p{M}]))", literal: "" },
-  non_word_boundary: { re: "(?:(?<=[\\p{L}\\p{M}])(?=[\\p{L}\\p{M}])|(?<![\\p{L}\\p{M}])(?![\\p{L}\\p{M}]))", literal: "" },
+  boundary: {
+    re: "(?:(?<![\\p{L}\\p{M}])(?=[\\p{L}\\p{M}])|(?<=[\\p{L}\\p{M}])(?![\\p{L}\\p{M}]))",
+    literal: "",
+  },
+  non_word_boundary: {
+    re: "(?:(?<=[\\p{L}\\p{M}])(?=[\\p{L}\\p{M}])|(?<![\\p{L}\\p{M}])(?![\\p{L}\\p{M}]))",
+    literal: "",
+  },
   // word / not_word mirror Ruby's default ASCII-only \w / \W. Only one
   // map (odni-che-Cyrl-Latn-2015) uses these aliases — its palochka
   // rule depends on Cyrillic being treated as non-word. ASCII-only

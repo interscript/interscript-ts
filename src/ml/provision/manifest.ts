@@ -155,11 +155,7 @@ export function sidecarFilenames(
   format: AssetFormat = "onnx",
 ): readonly string[] {
   const asset = assetNameFor(entry, variant, format)
-  return [
-    `${asset}.sha256`,
-    "vocab.json",
-    "config.json",
-  ]
+  return [`${asset}.sha256`, "vocab.json", "config.json"]
 }
 
 function assetNameFor(
@@ -180,7 +176,5 @@ function taskNameFromBases(entry: ManifestModelEntry): string {
   const lastSegment = entry.github_base.split("/").filter(Boolean).pop() ?? ""
   const suffix = "-v{version}"
   if (lastSegment.endsWith(suffix)) return lastSegment.slice(0, -suffix.length)
-  throw new Error(
-    `Cannot extract task name from manifest entry. github_base=${entry.github_base}`,
-  )
+  throw new Error(`Cannot extract task name from manifest entry. github_base=${entry.github_base}`)
 }

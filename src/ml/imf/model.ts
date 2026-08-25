@@ -30,11 +30,7 @@ export class IMFModel {
   private readonly kv: boolean
   private readonly pasts: ReadonlyArray<{ name: string; dims: readonly number[] }>
 
-  private constructor(
-    manifest: IMFManifest,
-    encoder: InferenceSession,
-    decoder: MetadataSession,
-  ) {
+  private constructor(manifest: IMFManifest, encoder: InferenceSession, decoder: MetadataSession) {
     this.manifest = manifest
     this.id = manifest.id
     this.encoder = encoder
@@ -47,9 +43,10 @@ export class IMFModel {
     const manifest = parseManifest(zipBytes)
     const graphs = await verifyAndRead(zipBytes)
     const encoder = await createSession(graphs.get("encoder.onnx")!)
-    const decoderName = manifest.decoder === "kv" && graphs.has("decoder-kv.onnx")
-      ? "decoder-kv.onnx"
-      : "decoder.onnx"
+    const decoderName =
+      manifest.decoder === "kv" && graphs.has("decoder-kv.onnx")
+        ? "decoder-kv.onnx"
+        : "decoder.onnx"
     const decoder = (await createSession(graphs.get(decoderName)!)) as MetadataSession
     return new IMFModel(manifest, encoder, decoder)
   }
@@ -69,7 +66,9 @@ export class IMFModel {
     const ids = encode(text)
     if (ids.length === 1) return ""
     const hidden = await this.runEncoder(ids)
-    const tokens = this.kv ? await this.greedyKv(hidden, maxLen) : await this.greedyPlain(hidden, maxLen)
+    const tokens = this.kv
+      ? await this.greedyKv(hidden, maxLen)
+      : await this.greedyPlain(hidden, maxLen)
     return decode(tokens)
   }
 
@@ -106,9 +105,7 @@ export class IMFModel {
     return specs
   }
 
-  private pastTensors(
-    present: ReadonlyMap<string, Tensor> | undefined,
-  ): Record<string, Tensor> {
+  private pastTensors(present: ReadonlyMap<string, Tensor> | undefined): Record<string, Tensor> {
     const feeds: Record<string, Tensor> = {}
     for (const spec of this.pasts) {
       const value = present?.get(spec.name)
@@ -134,7 +131,8 @@ export class IMFModel {
     let best = 0
     let bestVal = -Infinity
     for (let c = 0; c < classes; c++) {
-      const v = typeof data[base + c] === "bigint" ? Number(data[base + c]) : (data[base + c] as number)
+      const v =
+        typeof data[base + c] === "bigint" ? Number(data[base + c]) : (data[base + c] as number)
       if (v > bestVal) {
         bestVal = v
         best = c

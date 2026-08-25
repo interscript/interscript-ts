@@ -34,7 +34,7 @@ import {
   httpStrategy,
   type LoadStrategy,
 } from "./index.js"
-import { filesystemStrategy, normaliseMap } from "./loaders.node.js"
+import { filesystemStrategy } from "./loaders.node.js"
 
 interface GlobalOpts {
   mapsDir?: string | undefined
@@ -89,7 +89,9 @@ function parseGlobalOpts(args: string[]): { opts: GlobalOpts; rest: string[] } {
   return { opts, rest }
 }
 
-function loadCatalogue(mapsDir: string): Array<{ code: string; metadata?: Record<string, unknown> }> {
+function loadCatalogue(
+  mapsDir: string,
+): Array<{ code: string; metadata?: Record<string, unknown> }> {
   const out: Array<{ code: string; metadata?: Record<string, unknown> }> = []
   for (const f of readdirSync(mapsDir)) {
     if (!f.endsWith(".json")) continue
@@ -128,7 +130,11 @@ async function cmdTransliterate(args: string[], opts: GlobalOpts): Promise<numbe
     : readStdin()
 
   try {
-    const useAsync = !!opts.http || (!opts.mapsDir && !existsSync(resolve(process.cwd(), "maps")) && !existsSync(resolve(process.cwd(), "public/maps")))
+    const useAsync =
+      !!opts.http ||
+      (!opts.mapsDir &&
+        !existsSync(resolve(process.cwd(), "maps")) &&
+        !existsSync(resolve(process.cwd(), "public/maps")))
     const result = useAsync
       ? await transliterateAsync(systemCode, inputText)
       : transliterate(systemCode, inputText)
@@ -220,12 +226,24 @@ function cmdList(args: string[], opts: GlobalOpts): number {
   const filtered = entries.filter((e) => {
     if (!e.metadata) return true
     if (values.authority && e.metadata.authority_id !== values.authority) return false
-    if (values["source-script"] && e.metadata.source_script !== values["source-script"]) return false
-    if (values["destination-script"] && e.metadata.destination_script !== values["destination-script"]) return false
+    if (values["source-script"] && e.metadata.source_script !== values["source-script"])
+      return false
+    if (
+      values["destination-script"] &&
+      e.metadata.destination_script !== values["destination-script"]
+    )
+      return false
     return true
   })
   for (const e of filtered) {
-    const meta = e.metadata as { authority_id?: string; source_script?: string; destination_script?: string; name?: string } | undefined
+    const meta = e.metadata as
+      | {
+          authority_id?: string
+          source_script?: string
+          destination_script?: string
+          name?: string
+        }
+      | undefined
     const auth = meta?.authority_id ?? "?"
     const pair = meta ? `${meta.source_script}→${meta.destination_script}` : ""
     const name = meta?.name ?? ""
@@ -325,7 +343,7 @@ async function main(): Promise<void> {
   }
   const cmd = aliasMap[command] ?? command
 
-  let exit = 0
+  let exit: number
   switch (cmd) {
     case "transliterate":
       exit = await cmdTransliterate(rest, opts)

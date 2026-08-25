@@ -11,7 +11,6 @@ import {
   INPUT_VOCAB,
   INPUT_SYMBOL_TO_ID,
   ID_TO_HARAAQAT,
-  ARAB_CHARS,
 } from "../../src/ml/models/rababa/haraqat.js"
 import { ArabicEncoder } from "../../src/ml/models/rababa/encoder.js"
 import { cleanArabic, cleanBasic } from "../../src/ml/models/rababa/cleaner.js"

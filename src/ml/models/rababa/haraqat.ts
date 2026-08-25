@@ -7,14 +7,10 @@
  */
 
 /** Single haraqat (basic diacritics). */
-export const HARAQAT = [
-  "ْ", "ّ", "ٌ", "ٍ", "ِ", "ً", "َ", "ُ",
-] as const
+export const HARAQAT = ["ْ", "ّ", "ٌ", "ٍ", "ِ", "ً", "َ", "ُ"] as const
 
 /** Unicode escapes of HARAQAT for clarity. */
-export const UHARAQAT = [
-  "ْ", "ّ", "ٌ", "ٍ", "ِ", "ً", "َ", "ُ",
-] as const
+export const UHARAQAT = ["ْ", "ّ", "ٌ", "ٍ", "ِ", "ً", "َ", "ُ"] as const
 
 /** Punctuations allowed by the Arabic cleaner. */
 export const PUNCTUATIONS = [".", "،", ":", "؛", "-", "؟"] as const
@@ -23,8 +19,7 @@ export const PUNCTUATIONS = [".", "،", ":", "؛", "-", "؟"] as const
 export const ARAB_CHARS = "ىعظحرسيشضق ثلصطكآماإهزءأفؤغجئدةخوبذتن"
 
 /** Arabic characters without the space. */
-export const ARAB_CHARS_NO_SPACE =
-  "ىعظحرسيشضقثلصطكآماإهزءأفؤغجئدةخوبذتن"
+export const ARAB_CHARS_NO_SPACE = "ىعظحرسيشضقثلصطكآماإهزءأفؤغجئدةخوبذتن"
 
 /** Valid Arabic characters for the cleaner's whitelist. */
 export const VALID_ARABIC = [...HARAQAT, ...ARAB_CHARS]

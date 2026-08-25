@@ -18,7 +18,15 @@ const SAMPLE_MAP: CompiledMapJson = {
   systemCode: "test-x-x-x-x",
   dependencies: [],
   metadata: {},
-  stages: [{ kind: "stage", name: "main", rules: [{ kind: "sub", from: { kind: "string", value: "x" }, to: { kind: "string", value: "y" } }] }],
+  stages: [
+    {
+      kind: "stage",
+      name: "main",
+      rules: [
+        { kind: "sub", from: { kind: "string", value: "x" }, to: { kind: "string", value: "y" } },
+      ],
+    },
+  ],
   aliases: {},
   functions: {},
 }
@@ -100,10 +108,7 @@ describe("httpStrategy", () => {
       baseUrl: (code) => `https://cdn.example.com/${code.charAt(0)}/${code}.json`,
     })
     await strategy("test-x-x-x-x")
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://cdn.example.com/t/test-x-x-x-x.json",
-      undefined,
-    )
+    expect(fetchMock).toHaveBeenCalledWith("https://cdn.example.com/t/test-x-x-x-x.json", undefined)
   })
 
   it("works end-to-end with transliterateAsync", async () => {

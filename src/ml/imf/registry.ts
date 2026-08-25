@@ -50,9 +50,10 @@ function cacheDir(): string {
 }
 
 async function fetchIndex(source: string): Promise<Record<string, IndexEntry>> {
-  const text = source.startsWith("http://") || source.startsWith("https://")
-    ? await (await fetch(source)).text()
-    : new TextDecoder().decode((await nodeFs())!.readFileSync(source))
+  const text =
+    source.startsWith("http://") || source.startsWith("https://")
+      ? await (await fetch(source)).text()
+      : new TextDecoder().decode((await nodeFs())!.readFileSync(source))
   const raw = loadYaml(text) as {
     version?: number
     models?: Record<string, Record<string, string | Part[]>>
@@ -74,7 +75,9 @@ async function fetchIndex(source: string): Promise<Record<string, IndexEntry>> {
 
 async function sha256Hex(data: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(data).buffer as ArrayBuffer)
-  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("")
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
 }
 
 async function partBytes(fs: NodeFs | undefined, url: string): Promise<Uint8Array> {
@@ -108,15 +111,14 @@ export interface ResolvedZip {
   path?: string
 }
 
-export async function resolve(
-  modelId: string,
-  indexUrl?: string,
-): Promise<ResolvedZip> {
+export async function resolve(modelId: string, indexUrl?: string): Promise<ResolvedZip> {
   const source = indexUrl ?? process.env["SECRYST_INDEX"] ?? DEFAULT_INDEX_URL
   const entries = await fetchIndex(source)
   const entry = entries[modelId]
   if (!entry) {
-    throw new RegistryError(`unknown model id '${modelId}' (known: ${Object.keys(entries).sort().join(", ")})`)
+    throw new RegistryError(
+      `unknown model id '${modelId}' (known: ${Object.keys(entries).sort().join(", ")})`,
+    )
   }
 
   const fs = await nodeFs()

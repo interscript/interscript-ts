@@ -31,7 +31,10 @@ export interface WebSessionOptions {
 type OrtWebSession = {
   readonly inputNames: readonly string[]
   readonly outputNames: readonly string[]
-  run(feeds: Record<string, unknown>, options?: Record<string, unknown>): Promise<Record<string, unknown>>
+  run(
+    feeds: Record<string, unknown>,
+    options?: Record<string, unknown>,
+  ): Promise<Record<string, unknown>>
   release(): Promise<void>
 }
 
@@ -95,8 +98,7 @@ class WebInferenceSession implements InferenceSession {
     const ort = await loadOrt()
     // Execution provider preference — onnxruntime-web picks the first
     // available; WebGPU silently falls back to WASM when unavailable.
-    const executionProviders: string[] =
-      opts.webgpu === false ? ["wasm"] : ["webgpu", "wasm"]
+    const executionProviders: string[] = opts.webgpu === false ? ["wasm"] : ["webgpu", "wasm"]
     const session = await ort.InferenceSession.create(modelData, {
       executionProviders,
     })

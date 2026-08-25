@@ -11,12 +11,7 @@
  * interpreter (OCP).
  */
 
-import type {
-  CompiledMap,
-  DetectionResult,
-  DetectOptions,
-  SystemCode,
-} from "./types.js"
+import type { CompiledMap, DetectionResult, DetectOptions, SystemCode } from "./types.js"
 import { MapLoader, type LoadStrategy } from "./loader.js"
 import { executeStage, executeStageAsync } from "./runtime/interpreter.js"
 import {
@@ -67,15 +62,19 @@ export type { LoadStrategy, MapLoader } from "./loader.js"
 export { normaliseMap, bundledStrategy } from "./loaders.js"
 export { httpStrategy, type HttpStrategyOptions } from "./http-loader.js"
 export { iscStrategy, iscBundledStrategy, type IscStrategyOptions } from "./isc/loader.js"
-export type { IscDocument, IscItem, IscRule, IscStage, IscStageItem, IscTest, IscConstraint } from "./isc/types.js"
+export type {
+  IscDocument,
+  IscItem,
+  IscRule,
+  IscStage,
+  IscStageItem,
+  IscTest,
+  IscConstraint,
+} from "./isc/types.js"
 export { parseIsc } from "./isc/parser.js"
 export { IscParseError } from "./isc/types.js"
 export { iscToCompiledMap } from "./isc/converter.js"
-export {
-  setRababaConfig,
-  resetRababaConfigs,
-  type RababaConfigEntry,
-} from "./stdlib/ml.js"
+export { setRababaConfig, resetRababaConfigs, type RababaConfigEntry } from "./stdlib/ml.js"
 
 export interface InterscriptConfig {
   /** Strategies consulted in order when loading a map. */
@@ -171,11 +170,7 @@ class InterscriptRuntime {
    * Also handles ML-powered maps (rababa, secryst) — use this instead
    * of transliterate() for any map that might contain ML funcalls.
    */
-  async transliterateAsync(
-    systemCode: SystemCode,
-    input: string,
-    stage?: string,
-  ): Promise<string> {
+  async transliterateAsync(systemCode: SystemCode, input: string, stage?: string): Promise<string> {
     try {
       const map = await this.loadMapAsync(systemCode)
       const stageName = stage ?? this.defaultStage
@@ -258,11 +253,7 @@ export function loadMapAsync(systemCode: SystemCode): Promise<CompiledMap> {
 }
 
 /** Public API — mirrors Interscript.detect. */
-export function detect(
-  input: string,
-  output: string,
-  opts?: DetectOptions,
-): DetectionResult[] {
+export function detect(input: string, output: string, opts?: DetectOptions): DetectionResult[] {
   return runtime().detect(input, output, opts)
 }
 

@@ -39,10 +39,7 @@ export function filesystemStrategy(mapsDir: string): LoadStrategy {
 /**
  * Loader relative to a module URL — handy for test fixtures.
  */
-export function relativeFilesystemStrategy(
-  relativeTo: string,
-  relativePath: string,
-): LoadStrategy {
+export function relativeFilesystemStrategy(relativeTo: string, relativePath: string): LoadStrategy {
   const base = relativeTo.startsWith("file://") ? dirname(fileURLToPath(relativeTo)) : relativeTo
   return filesystemStrategy(resolve(base, relativePath))
 }

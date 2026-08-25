@@ -28,12 +28,7 @@ function makeRng(seed: number): () => number {
   }
 }
 
-function randomString(
-  rng: () => number,
-  alphabet: string,
-  minLen: number,
-  maxLen: number,
-): string {
+function randomString(rng: () => number, alphabet: string, minLen: number, maxLen: number): string {
   const len = minLen + Math.floor(rng() * (maxLen - minLen + 1))
   let out = ""
   for (let i = 0; i < len; i++) {
@@ -114,7 +109,7 @@ describe("parallelReplace — property tests", () => {
       parallelReplace("ኢትዮጵያ", [
         ["ኢ", "i"],
         ["ት", "t"],
-      ])
+      ]),
     ).toBe("itዮጵያ")
     // Astral (emoji) — uses surrogate pairs in JS UTF-16.
     const tree = compileParallelTree([["😀", "X"]])

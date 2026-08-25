@@ -28,12 +28,7 @@ export type {
   Tensor,
 } from "./types.js"
 
-export {
-  registerModel,
-  loadModel,
-  registeredKinds,
-  resetModels,
-} from "./registry.js"
+export { registerModel, loadModel, registeredKinds, resetModels } from "./registry.js"
 
 export { createSession, detectBackend } from "./session/index.js"
 

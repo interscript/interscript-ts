@@ -22,13 +22,15 @@ import type {
 import { IscParseError } from "./types.js"
 
 const PRIMITIVES = new Set([
-  "boundary", "line_start", "line_end", "word_boundary",
-  "space", "non_boundary",
+  "boundary",
+  "line_start",
+  "line_end",
+  "word_boundary",
+  "space",
+  "non_boundary",
 ])
 
-const FUNCTIONS = new Set([
-  "upcase", "downcase", "title_case", "reverse", "strip", "swapcase",
-])
+const FUNCTIONS = new Set(["upcase", "downcase", "title_case", "reverse", "strip", "swapcase"])
 
 const CONSTRAINTS = new Set(["before", "after", "not_before", "not_after"])
 
@@ -61,8 +63,8 @@ class Parser {
     let metadata: Record<string, unknown> = {}
     let tests: IscTest[] = []
     let aliases: Array<{ name: string; value: IscItem }> = []
-    let stages: IscStage[] = []
-    let dependencies: Array<{ target: string; aliasName?: string }> = []
+    const stages: IscStage[] = []
+    const dependencies: Array<{ target: string; aliasName?: string }> = []
 
     for (const item of body) {
       if (item.metadata) metadata = { ...metadata, ...item.metadata }
@@ -189,7 +191,10 @@ class Parser {
     for (;;) {
       this.skipWs()
       if (this.peek() === "}") break
-      if (this.peek() === "#") { this.skipLine(); continue }
+      if (this.peek() === "#") {
+        this.skipLine()
+        continue
+      }
 
       const input = this.parseStringLiteral()
       this.skipWs()
@@ -222,7 +227,10 @@ class Parser {
     for (;;) {
       this.skipWs()
       if (this.peek() === "}") break
-      if (this.peek() === "#") { this.skipLine(); continue }
+      if (this.peek() === "#") {
+        this.skipLine()
+        continue
+      }
 
       const name = this.parseIdentifier()
       this.skipWs()
@@ -248,7 +256,10 @@ class Parser {
     for (;;) {
       this.skipWs()
       if (this.peek() === "}") break
-      if (this.peek() === "#") { this.skipLine(); continue }
+      if (this.peek() === "#") {
+        this.skipLine()
+        continue
+      }
 
       const keyword = this.peekWord()
       if (keyword === "parallel" || keyword === "sequence") {
@@ -259,7 +270,10 @@ class Parser {
         for (;;) {
           this.skipWs()
           if (this.peek() === "}") break
-          if (this.peek() === "#") { this.skipLine(); continue }
+          if (this.peek() === "#") {
+            this.skipLine()
+            continue
+          }
           if (this.peekWord() === "sub") {
             rules.push(this.parseRule())
           } else {
@@ -289,9 +303,11 @@ class Parser {
         } else {
           this.error("Expected map. or stage. after run")
         }
-        body.push(dep
-          ? { kind: "run", dependency: dep, stage: stageName }
-          : { kind: "run", stage: stageName })
+        body.push(
+          dep
+            ? { kind: "run", dependency: dep, stage: stageName }
+            : { kind: "run", stage: stageName },
+        )
       } else if (keyword === "separate") {
         this.consume("separate")
         this.skipWs()
@@ -430,8 +446,14 @@ class Parser {
     const word = this.peekWord()
     if (!word) this.error("Expected item atom")
 
-    if (word === "none") { this.consume("none"); return { type: "none" } }
-    if (word === "any_character") { this.consume("any_character"); return { type: "function", name: "any_character" } }
+    if (word === "none") {
+      this.consume("none")
+      return { type: "none" }
+    }
+    if (word === "any_character") {
+      this.consume("any_character")
+      return { type: "function", name: "any_character" }
+    }
 
     if (word === "any") {
       this.consume("any")
@@ -685,8 +707,14 @@ class Parser {
   private skipWs(): void {
     while (this.pos < this.src.length) {
       const c = this.charAt(this.pos)
-      if (/\s/.test(c)) { this.pos++; continue }
-      if (c === "#") { this.skipLine(); continue }
+      if (/\s/.test(c)) {
+        this.pos++
+        continue
+      }
+      if (c === "#") {
+        this.skipLine()
+        continue
+      }
       break
     }
   }

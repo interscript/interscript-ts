@@ -10,7 +10,10 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const CLI_PATH = resolve(ROOT, "dist/cli.js")
 const MAPS_DIR = resolve(ROOT, "test/fixtures/maps")
 
-function runCli(args: string[], stdin?: string): { stdout: string; stderr: string; status: number | null } {
+function runCli(
+  args: string[],
+  stdin?: string,
+): { stdout: string; stderr: string; status: number | null } {
   const result = spawnSync("node", [CLI_PATH, ...args], {
     encoding: "utf8",
     input: stdin,
@@ -38,10 +41,7 @@ describe("CLI", () => {
   })
 
   it("accepts 't' alias for transliterate", () => {
-    const r = runCli(
-      ["t", "bgnpcgn-ukr-Cyrl-Latn-2019", "--maps-dir", MAPS_DIR],
-      "Антон",
-    )
+    const r = runCli(["t", "bgnpcgn-ukr-Cyrl-Latn-2019", "--maps-dir", MAPS_DIR], "Антон")
     expect(r.status).toBe(0)
     expect(r.stdout.trim()).toBe("Anton")
   })
@@ -89,14 +89,7 @@ describe("CLI", () => {
     const tmp = mkdtempSync(resolve(tmpdir(), "isx-cli-test-"))
     const infile = resolve(tmp, "names.txt")
     writeFileSync(infile, "Антон\nКиїв\n", "utf8")
-    const r = runCli([
-      "b",
-      "bgnpcgn-ukr-Cyrl-Latn-2019",
-      infile,
-      "--csv",
-      "--maps-dir",
-      MAPS_DIR,
-    ])
+    const r = runCli(["b", "bgnpcgn-ukr-Cyrl-Latn-2019", infile, "--csv", "--maps-dir", MAPS_DIR])
     expect(r.status).toBe(0)
     expect(r.stdout).toContain('"Антон"')
     expect(r.stdout).toContain('"Anton"')

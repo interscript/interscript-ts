@@ -10,8 +10,7 @@
  * air-gapped envs, or staging deployments.
  */
 
-let modelBase =
-  "https://cdn.jsdelivr.net/gh/interscript/ml-models@main/npm/models"
+let modelBase = "https://cdn.jsdelivr.net/gh/interscript/ml-models@main/npm/models"
 
 export function setModelBase(url: string): void {
   modelBase = url.replace(/\/$/, "")

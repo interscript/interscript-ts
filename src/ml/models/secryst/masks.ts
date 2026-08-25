@@ -36,10 +36,7 @@ export function causalMask(seqLen: number): Uint8Array {
  * Pad ID = 1 in secryst (matching the Ruby code).
  * Shape: [batch, seq_len]. 1 = real token, 0 = padding.
  */
-export function paddingMask(
-  tokens: readonly number[],
-  padId: number = 1,
-): Uint8Array {
+export function paddingMask(tokens: readonly number[], padId: number = 1): Uint8Array {
   return new Uint8Array(tokens.map((t) => (t === padId ? 0 : 1)))
 }
 

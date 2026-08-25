@@ -10,11 +10,7 @@
  * to a single class with options — they share the same vocab.
  */
 
-import {
-  INPUT_ID_TO_SYMBOL,
-  INPUT_SYMBOL_TO_ID,
-  PAD_SYMBOL,
-} from "./haraqat.js"
+import { INPUT_ID_TO_SYMBOL, INPUT_SYMBOL_TO_ID, PAD_SYMBOL } from "./haraqat.js"
 import { cleanArabic, cleanBasic } from "./cleaner.js"
 
 export interface ArabicEncoderOptions {

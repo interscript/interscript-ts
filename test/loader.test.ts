@@ -81,9 +81,7 @@ describe("MapLoader", () => {
 
   it("consults strategies in order", () => {
     expect(loader.load("from-bundle").systemCode).toBe("test-x-x-x-x")
-    expect(loader.load("bgnpcgn-deu-Latn-Latn-2000").systemCode).toBe(
-      "bgnpcgn-deu-Latn-Latn-2000",
-    )
+    expect(loader.load("bgnpcgn-deu-Latn-Latn-2000").systemCode).toBe("bgnpcgn-deu-Latn-Latn-2000")
   })
 
   it("caches results", () => {
