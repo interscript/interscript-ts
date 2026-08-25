@@ -63,6 +63,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Checkout maps repo
+        uses: actions/checkout@v7
+        with:
+          repository: interscript/maps
+          path: _maps
+      - name: Symlink maps into ../maps
+        run: ln -s "$PWD/_maps" "$GITHUB_WORKSPACE/../maps"
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
