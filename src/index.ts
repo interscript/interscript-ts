@@ -16,16 +16,16 @@ import type {
   DetectionResult,
   DetectOptions,
   SystemCode,
-} from "./types.js";
-import { MapLoader, type LoadStrategy } from "./loader.js";
-import { executeStage } from "./runtime/interpreter.js";
+} from "./types.js"
+import { MapLoader, type LoadStrategy } from "./loader.js"
+import { executeStage, executeStageAsync } from "./runtime/interpreter.js"
 import {
   DependencyMissingError,
   InterscriptError,
   MapNotFoundError,
   SystemConversionError,
-} from "./errors.js";
-import { detectInMaps } from "./detector.js";
+} from "./errors.js"
+import { detectInMaps } from "./detector.js"
 
 export {
   InterscriptError,
@@ -33,7 +33,7 @@ export {
   SystemConversionError,
   DependencyMissingError,
   MapLogicError,
-} from "./errors.js";
+} from "./errors.js"
 export type {
   CompiledMap,
   CompiledMapJson,
@@ -58,30 +58,41 @@ export type {
   GroupItem,
   RepeatItem,
   StageItem,
-} from "./types.js";
-export type { LoadStrategy, MapLoader } from "./loader.js";
+} from "./types.js"
+export type { LoadStrategy, MapLoader } from "./loader.js"
+// Only re-export browser-safe loaders from the main entry. Filesystem
+// strategies live in `./loaders.node.ts` and pull in `node:fs`; importing
+// them via the main entry would break browser bundles. Node callers
+// (CLI, server tests) should import directly from `./loaders.node.js`.
+export { normaliseMap, bundledStrategy } from "./loaders.js"
+export { httpStrategy, type HttpStrategyOptions } from "./http-loader.js"
+export { iscStrategy, iscBundledStrategy, type IscStrategyOptions } from "./isc/loader.js"
+export type { IscDocument, IscItem, IscRule, IscStage, IscStageItem, IscTest, IscConstraint } from "./isc/types.js"
+export { parseIsc } from "./isc/parser.js"
+export { IscParseError } from "./isc/types.js"
+export { iscToCompiledMap } from "./isc/converter.js"
 export {
-  normaliseMap,
-  filesystemStrategy,
-  bundledStrategy,
-} from "./loaders.js";
+  setRababaConfig,
+  resetRababaConfigs,
+  type RababaConfigEntry,
+} from "./stdlib/ml.js"
 
 export interface InterscriptConfig {
   /** Strategies consulted in order when loading a map. */
-  readonly strategies?: LoadStrategy[];
+  readonly strategies?: LoadStrategy[]
   /** Default stage to execute if not specified. Default: "main". */
-  readonly defaultStage?: string;
+  readonly defaultStage?: string
 }
 
-const DEFAULT_STAGE = "main";
+const DEFAULT_STAGE = "main"
 
 class InterscriptRuntime {
-  private readonly loader: MapLoader;
-  private readonly defaultStage: string;
+  private readonly loader: MapLoader
+  private readonly defaultStage: string
 
   constructor(config: InterscriptConfig = {}) {
-    this.loader = new MapLoader(config.strategies ?? []);
-    this.defaultStage = config.defaultStage ?? DEFAULT_STAGE;
+    this.loader = new MapLoader(config.strategies ?? [])
+    this.defaultStage = config.defaultStage ?? DEFAULT_STAGE
   }
 
   /**
@@ -89,18 +100,51 @@ class InterscriptRuntime {
    * Throws MapNotFoundError if the map can't be located.
    */
   loadMap(systemCode: SystemCode): CompiledMap {
-    const map = this.loader.load(systemCode);
+    const map = this.loader.load(systemCode)
     for (const dep of map.dependencies) {
       try {
-        this.loader.load(dep);
+        this.loader.load(dep)
       } catch (e) {
         if (e instanceof MapNotFoundError) {
-          throw new DependencyMissingError(dep);
+          throw new DependencyMissingError(dep)
         }
-        throw e;
+        throw e
       }
     }
-    return map;
+    return map
+  }
+
+  /**
+   * Async pre-load. Required when async strategies (HTTP) are configured
+   * and the map isn't already cached.
+   *
+   * Recursively loads all transitive dependencies so the synchronous
+   * execution path can resolve deps without awaiting.
+   */
+  async loadMapAsync(systemCode: SystemCode): Promise<CompiledMap> {
+    const map = await this.loader.loadAsync(systemCode)
+    // Recursively load every transitive dep. The synchronous executor
+    // calls loader.load() during execution and can't await async
+    // strategies — so we preload the entire closure upfront.
+    const seen = new Set<SystemCode>()
+    const queue: SystemCode[] = [...map.dependencies]
+    while (queue.length > 0) {
+      const dep = queue.shift()!
+      if (seen.has(dep)) continue
+      seen.add(dep)
+      try {
+        const depMap = await this.loader.loadAsync(dep)
+        for (const d of depMap.dependencies) {
+          if (!seen.has(d)) queue.push(d)
+        }
+      } catch (e) {
+        if (e instanceof MapNotFoundError) {
+          throw new DependencyMissingError(dep)
+        }
+        throw e
+      }
+    }
+    return map
   }
 
   /**
@@ -109,26 +153,50 @@ class InterscriptRuntime {
    */
   transliterate(systemCode: SystemCode, input: string, stage?: string): string {
     try {
-      const map = this.loadMap(systemCode);
-      const stageName = stage ?? this.defaultStage;
-      return executeStage(map, stageName, input, this.loader);
+      const map = this.loadMap(systemCode)
+      const stageName = stage ?? this.defaultStage
+      return executeStage(map, stageName, input, this.loader)
     } catch (e) {
-      if (e instanceof InterscriptError) throw e;
+      if (e instanceof InterscriptError) throw e
       throw new SystemConversionError(
         `Transliteration failed for ${systemCode}: ${(e as Error).message}`,
         { cause: e },
-      );
+      )
+    }
+  }
+
+  /**
+   * Async transliterate. Required when the configured strategies include
+   * async loaders (e.g. httpStrategy) and the map may not be cached.
+   * Also handles ML-powered maps (rababa, secryst) — use this instead
+   * of transliterate() for any map that might contain ML funcalls.
+   */
+  async transliterateAsync(
+    systemCode: SystemCode,
+    input: string,
+    stage?: string,
+  ): Promise<string> {
+    try {
+      const map = await this.loadMapAsync(systemCode)
+      const stageName = stage ?? this.defaultStage
+      return await executeStageAsync(map, stageName, input, this.loader)
+    } catch (e) {
+      if (e instanceof InterscriptError) throw e
+      throw new SystemConversionError(
+        `Transliteration failed for ${systemCode}: ${(e as Error).message}`,
+        { cause: e },
+      )
     }
   }
 
   /** List all maps currently loaded in the cache. */
   loadedMaps(): readonly SystemCode[] {
-    return this.loader.loadedMaps();
+    return this.loader.loadedMaps()
   }
 
   /** Direct loader access (for detector + advanced use). */
   getLoader(): MapLoader {
-    return this.loader;
+    return this.loader
   }
 
   /**
@@ -144,36 +212,49 @@ class InterscriptRuntime {
     opts: DetectOptions = {},
     knownMaps?: Iterable<SystemCode>,
   ): DetectionResult[] {
-    return detectInMaps(input, output, this.loader, opts, knownMaps);
+    return detectInMaps(input, output, this.loader, opts, knownMaps)
   }
 }
 
-let defaultRuntime: InterscriptRuntime | undefined;
+let defaultRuntime: InterscriptRuntime | undefined
 
 /** Configure the default runtime with custom strategies. */
 export function configure(config: InterscriptConfig): void {
-  defaultRuntime = new InterscriptRuntime(config);
+  defaultRuntime = new InterscriptRuntime(config)
 }
 
 function runtime(): InterscriptRuntime {
   if (!defaultRuntime) {
-    defaultRuntime = new InterscriptRuntime();
+    defaultRuntime = new InterscriptRuntime()
   }
-  return defaultRuntime;
+  return defaultRuntime
 }
 
 /** Public API — mirrors Interscript.transliterate from Ruby. */
-export function transliterate(
+export function transliterate(systemCode: SystemCode, input: string, stage?: string): string {
+  return runtime().transliterate(systemCode, input, stage)
+}
+
+/**
+ * Async transliterate. Use when async strategies (httpStrategy) are
+ * configured and the map may not be in the cache yet.
+ */
+export function transliterateAsync(
   systemCode: SystemCode,
   input: string,
   stage?: string,
-): string {
-  return runtime().transliterate(systemCode, input, stage);
+): Promise<string> {
+  return runtime().transliterateAsync(systemCode, input, stage)
 }
 
 /** Public API — mirrors Interscript.load. */
 export function loadMap(systemCode: SystemCode): CompiledMap {
-  return runtime().loadMap(systemCode);
+  return runtime().loadMap(systemCode)
+}
+
+/** Async version — needed when async strategies may be used. */
+export function loadMapAsync(systemCode: SystemCode): Promise<CompiledMap> {
+  return runtime().loadMapAsync(systemCode)
 }
 
 /** Public API — mirrors Interscript.detect. */
@@ -182,10 +263,10 @@ export function detect(
   output: string,
   opts?: DetectOptions,
 ): DetectionResult[] {
-  return runtime().detect(input, output, opts);
+  return runtime().detect(input, output, opts)
 }
 
 /** Reset the default runtime (mainly for tests). */
 export function reset(): void {
-  defaultRuntime = undefined;
+  defaultRuntime = undefined
 }

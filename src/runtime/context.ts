@@ -6,53 +6,53 @@
  * helpers so behaviour stays predictable.
  */
 
-import type { CompiledMap, Item } from "../types.js";
-import type { MapLoader } from "../loader.js";
+import type { CompiledMap, Item } from "../types.js"
+import type { MapLoader } from "../loader.js"
 
 export class ExecutionContext {
   /** Current working string the interpreter is transforming. */
-  current: string;
+  current: string
 
   /** Map currently being executed. */
-  readonly map: CompiledMap;
+  readonly map: CompiledMap
 
   /** Optional loader — used to resolve run-rule dependencies. */
-  private readonly loader: MapLoader | undefined;
+  private readonly loader: MapLoader | undefined
 
   /** Lazily-resolved aliases. */
-  private readonly aliasCache = new Map<string, Item>();
+  private readonly aliasCache = new Map<string, Item>()
 
   /** Function cache so repeated function calls don't re-resolve. */
-  readonly functions: CompiledMap["functions"];
+  readonly functions: CompiledMap["functions"]
 
   constructor(map: CompiledMap, initial: string, loader?: MapLoader) {
-    this.map = map;
-    this.current = initial;
-    this.functions = map.functions;
-    this.loader = loader;
+    this.map = map
+    this.current = initial
+    this.functions = map.functions
+    this.loader = loader
   }
 
   resolveAlias(name: string): Item | undefined {
-    if (this.aliasCache.has(name)) return this.aliasCache.get(name);
+    if (this.aliasCache.has(name)) return this.aliasCache.get(name)
     // Try the current map's aliases first
-    let resolved = this.map.aliases.get(name);
+    let resolved = this.map.aliases.get(name)
     // If not found, try dependency maps' aliases (transitive resolution)
     if (!resolved && this.loader) {
       for (const dep of this.map.dependencies) {
         try {
-          const depMap = this.loader.load(dep);
-          const depAlias = depMap.aliases.get(name);
+          const depMap = this.loader.load(dep)
+          const depAlias = depMap.aliases.get(name)
           if (depAlias) {
-            resolved = depAlias;
-            break;
+            resolved = depAlias
+            break
           }
         } catch {
           // dependency not loadable; skip
         }
       }
     }
-    if (resolved) this.aliasCache.set(name, resolved);
-    return resolved;
+    if (resolved) this.aliasCache.set(name, resolved)
+    return resolved
   }
 
   /**
@@ -60,7 +60,7 @@ export class ExecutionContext {
    * Reuses the same loader; fresh alias cache.
    */
   withMap(map: CompiledMap): ExecutionContext {
-    return new ExecutionContext(map, this.current, this.loader);
+    return new ExecutionContext(map, this.current, this.loader)
   }
 
   /**
@@ -68,10 +68,8 @@ export class ExecutionContext {
    */
   loadDependency(systemCode: string): CompiledMap {
     if (!this.loader) {
-      throw new Error(
-        `Cannot resolve dependency ${systemCode}: no loader configured`,
-      );
+      throw new Error(`Cannot resolve dependency ${systemCode}: no loader configured`)
     }
-    return this.loader.load(systemCode);
+    return this.loader.load(systemCode)
   }
 }

@@ -1,7 +1,7 @@
 {
-  "name": "interscript",
+  "name": "interscript-ts",
   "version": "0.1.0",
-  "description": "Interscript TypeScript runtime \u2014 interoperable script conversion",
+  "description": "Interscript TypeScript runtime — interoperable script conversion",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -10,6 +10,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./ml": {
+      "types": "./dist/ml/index.d.ts",
+      "import": "./dist/ml/index.js"
+    },
+    "./loaders.node": {
+      "types": "./dist/loaders.node.d.ts",
+      "import": "./dist/loaders.node.js"
     },
     "./cli": "./dist/cli.js",
     "./package.json": "./package.json"
@@ -58,13 +66,20 @@
   "homepage": "https://github.com/interscript/interscript-ts#readme",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^4.1.10",
-    "eslint": "^10.8.1",
+    "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.0",
+    "onnxruntime-node": "^1.27.0",
+    "playwright": "^1.62.0",
     "prettier": "^3.9.0",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.65.0",
     "vitest": "^4.1.0"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "js-yaml": "^5.3.0"
   }
 }
