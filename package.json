@@ -25,7 +25,7 @@
   "bin": {
     "interscript-ts": "./dist/cli.js"
   },
-  "sideEffects": false,
+  "sideEffects": ["dist/ml/models/**/*.js"],
   "engines": {
     "node": ">=20"
   },
