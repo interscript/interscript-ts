@@ -1,28 +1,57 @@
-name: release
+name: Release
 
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 0.1.1)"
+        required: true
+        type: string
 
 permissions:
-  contents: read
-  id-token: write  # required for npm provenance
+  id-token: write
+  contents: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: release
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: "22"
-          cache: npm
-          registry-url: https://registry.npmjs.org
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
       - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
       - run: npm run build
       - run: npm test
+      - name: Set version from workflow input
+        if: github.event_name == "workflow_dispatch"
+        run: |
+          current=$(node -p "require('./package.json').version")
+          if [ "$current" != "${{ inputs.version }}" ]; then
+            npm version ${{ inputs.version }} --no-git-tag-version
+          fi
       - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.INTERSCRIPT_NPM_TOKEN }}
+
+  github-release:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=v${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
