@@ -1,6 +1,6 @@
 {
-  "name": "interscript-ts",
-  "version": "0.1.0",
+  "name": "interscript",
+  "version": "3.0.0",
   "description": "Interscript TypeScript runtime — interoperable script conversion",
   "type": "module",
   "main": "./dist/index.js",
@@ -23,9 +23,11 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "interscript-ts": "./dist/cli.js"
+    "interscript": "./dist/cli.js"
   },
-  "sideEffects": ["dist/ml/models/**/*.js"],
+  "sideEffects": [
+    "dist/ml/models/**/*.js"
+  ],
   "engines": {
     "node": ">=20"
   },
