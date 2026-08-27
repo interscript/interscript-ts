@@ -1,7 +1,7 @@
 # Interscript-TS
 
 [![CI](https://github.com/interscript/interscript-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/interscript/interscript-ts/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/interscript-ts)](https://www.npmjs.com/package/interscript-ts)
+[![npm](https://img.shields.io/npm/v/interscript)](https://www.npmjs.com/package/interscript)
 
 TypeScript runtime for [Interscript](https://www.interscript.org) — interoperable script conversion systems.
 
@@ -14,13 +14,13 @@ A TypeScript-native port of the [Ruby runtime](https://github.com/interscript/in
 ## Installation
 
 ```bash
-npm install interscript-ts
+npm install interscript
 ```
 
 ## Quick start
 
 ```typescript
-import { transliterate, configure, bundledStrategy } from "interscript-ts"
+import { transliterate, configure, bundledStrategy } from "interscript"
 
 // Load IR maps from a JSON dictionary (e.g. fetched, bundled, or read from disk)
 configure({
@@ -38,7 +38,7 @@ transliterate("alalc-amh-Ethi-Latn-2011", "ኢትዮጵያ")    // → "ʼiteyop
 ## Filesystem loader (Node)
 
 ```typescript
-import { configure, transliterate, filesystemStrategy } from "interscript-ts"
+import { configure, transliterate, filesystemStrategy } from "interscript"
 
 configure({ strategies: [filesystemStrategy("./maps")] })
 // reads `./maps/<systemCode>.json` on demand, caches
@@ -47,7 +47,7 @@ configure({ strategies: [filesystemStrategy("./maps")] })
 ## CLI
 
 ```bash
-npx interscript-ts -s bgnpcgn-ukr-Cyrl-Latn-2019 -i input.txt --maps-dir ./maps
+npx interscript -s bgnpcgn-ukr-Cyrl-Latn-2019 -i input.txt --maps-dir ./maps
 ```
 
 Reads stdin if `-i` is omitted; writes stdout if `-o` is omitted.
