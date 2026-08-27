@@ -173,10 +173,7 @@ describe("registry", () => {
     const good = createHash("sha256").update(body).digest("hex")
     const bad = "0".repeat(64)
 
-    async function withServer(
-      sidecar: string | null,
-      fn: (base: string) => Promise<void>,
-    ) {
+    async function withServer(sidecar: string | null, fn: (base: string) => Promise<void>) {
       const server = createServer((req, res) => {
         if (req.url === "/models-index.yaml") {
           res.writeHead(200, { "content-type": "text/yaml" })
@@ -215,8 +212,6 @@ describe("registry", () => {
       await expect(resolve("nope", url)).rejects.toThrow(/index sha256/)
     })
   })
-
-
 })
 
 const e2eZip = process.env["SECRYST_E2E_ZIP"]
