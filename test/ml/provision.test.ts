@@ -15,6 +15,7 @@ import {
   type Manifest,
   type ManifestModelEntry,
 } from "../../src/ml/provision/manifest.js"
+import { provisionModel } from "../../src/ml/provision/index.js"
 
 const SAMPLE_ENTRY: ManifestModelEntry = {
   status: "stable",
@@ -113,6 +114,26 @@ describe("manifest provisioner", () => {
         github_base: "https://example.com/no-version-pattern/",
       }
       expect(() => artifactUrls(malformed)).toThrow(/task name/)
+    })
+  })
+
+  describe("manifest-less resolution errors point at the IMF registry", () => {
+    it("rejects with imf guidance when no manifest is published and no url given", async () => {
+      setInlineManifest(null)
+      try {
+        await expect(provisionModel({ kind: "secryst", id: "unresolved" })).rejects.toThrow(
+          /imf\.resolve\(/,
+        )
+      } finally {
+        setInlineManifest(SAMPLE_MANIFEST)
+      }
+    })
+
+    it("rejects with imf guidance when the manifest has no matching entry", async () => {
+      setInlineManifest(SAMPLE_MANIFEST) // has no entry for this id
+      await expect(provisionModel({ kind: "secryst", id: "unresolved" })).rejects.toThrow(
+        /imf\.resolve\(/,
+      )
     })
   })
 })

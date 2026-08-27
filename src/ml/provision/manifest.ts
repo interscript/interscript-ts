@@ -1,19 +1,18 @@
 /**
- * Manifest-driven model resolution.
+ * Manifest-driven model resolution. DEPRECATED — superseded by the IMF
+ * registry (`src/ml/imf/`, published at `imf` from "interscript/ml"):
+ * models.yaml on GitHub Releases with sha256 sidecar verification.
  *
- * The source of truth for "what model version is current" lives in
- * the `@interscript/models` npm package (a tiny JSON manifest kept
- * in lockstep with GH Releases in `interscript/ml-models`).
+ * No manifest is published anymore (the `@interscript/models` npm
+ * package was never released; the CDN manifest.json URL is dead).
+ * This module remains for explicit-URL provisioning and
+ * inline-manifest (test / air-gapped) use.
  *
  * Resolution order for the manifest itself:
  *   1. Programmatically injected via `setManifestUrl()` or
  *      `setInlineManifest()` (tests, air-gapped envs).
- *   2. The `@interscript/models` package, when installed.
- *   3. A remote JSON URL on the CDN (`manifest.json` next to the
+ *   2. A remote JSON URL on the CDN (`manifest.json` next to the
  *      release assets).
- *
- * See `ml-models/TODO.distribution/04-npm-packages.md` for the
- * full MECE breakdown of who owns what.
  */
 
 import { getModelBase } from "./base.js"
@@ -99,7 +98,12 @@ export async function loadManifest(): Promise<Manifest> {
   const url = manifestUrlOverride ?? defaultManifestUrl()
   const res = await fetch(url)
   if (!res.ok) {
-    throw new Error(`Failed to load model manifest from ${url}: ${res.status} ${res.statusText}`)
+    throw new Error(
+      `Failed to load model manifest from ${url}: ${res.status} ${res.statusText}. ` +
+        `The manifest-based provisioner is deprecated and no manifest is published; ` +
+        `load models via \`import { imf } from "interscript/ml"\` and \`imf.resolve("<model-id>")\` ` +
+        `(GitHub Releases index, sha256-verified), or pass an explicit \`url\` on the ModelRef.`,
+    )
   }
   const json = (await res.json()) as Manifest
   cachedManifest = json

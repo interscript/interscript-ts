@@ -122,8 +122,10 @@ async function resolveModelUrl(
   const entry = await resolveManifestEntry(ref.kind, ref.id)
   if (!entry) {
     throw new Error(
-      `No manifest entry for kind=${ref.kind} id=${ref.id}. ` +
-        `Pass an explicit \`url\` on the ModelRef or pin a task version in the manifest.`,
+      `No manifest entry for kind=${ref.kind} id=${ref.id}. The manifest-based ` +
+        `provisioner is deprecated; load models via \`import { imf } from "interscript/ml"\` ` +
+        `and \`imf.resolve("${ref.id}")\` (GitHub Releases index, sha256-verified), ` +
+        `or pass an explicit \`url\` on the ModelRef.`,
     )
   }
   const { primary } = artifactUrls(entry, variant, format)
