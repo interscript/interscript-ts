@@ -212,6 +212,16 @@ describe("registry", () => {
       await expect(resolve("nope", url)).rejects.toThrow(/index sha256/)
     })
   })
+  it("the public ./ml surface re-exports the IMF registry", async () => {
+    const ml = await import("../src/ml/index.js")
+    const imf = (ml as { imf?: Record<string, unknown> }).imf
+    expect(imf).toBeDefined()
+    expect(typeof imf!["resolve"]).toBe("function")
+    expect(typeof imf!["IMFModel"]).toBe("function")
+    expect(imf!["DEFAULT_INDEX_URL"]).toMatch(
+      /github\.com\/interscript\/interscript-ml\/releases\/download\/index-v\d+\/models-index\.yaml/,
+    )
+  })
 })
 
 const e2eZip = process.env["SECRYST_E2E_ZIP"]

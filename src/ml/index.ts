@@ -46,6 +46,13 @@ export {
   type ManifestModelEntry,
 } from "./provision/manifest.js"
 
+/**
+ * The IMF v1 registry — models.yaml resolution over GitHub Releases
+ * (sha256-sidecar-verified). This is the canonical way to load models
+ * by id; `import { imf } from "interscript/ml"`.
+ */
+export * as imf from "./imf/index.js"
+
 // Side-effect: register built-in model kinds. Adding a new model kind
 // = adding a new import here. Order doesn't matter.
 import "./models/rababa/index.js"
