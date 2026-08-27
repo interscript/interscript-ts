@@ -158,6 +158,60 @@ describe("registry", () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+  it("DEFAULT_INDEX_URL pins a GitHub Release asset, never raw", async () => {
+    const { DEFAULT_INDEX_URL } = await import("../src/ml/imf/registry.js")
+    expect(DEFAULT_INDEX_URL).toMatch(
+      /^https:\/\/github\.com\/interscript\/interscript-ml\/releases\/download\/index-v\d+\/models-index\.yaml$/,
+    )
+    expect(DEFAULT_INDEX_URL).not.toMatch(/raw\.githubusercontent/)
+  })
+
+  it("HTTP index fetch verifies the .sha256 sidecar before parsing", async () => {
+    const { createHash } = await import("node:crypto")
+    const { createServer } = await import("node:http")
+    const body = "version: 1\nmodels: {}\n"
+    const good = createHash("sha256").update(body).digest("hex")
+    const bad = "0".repeat(64)
+
+    async function withServer(sidecar: string | null, fn: (base: string) => Promise<void>) {
+      const server = createServer((req, res) => {
+        if (req.url === "/models-index.yaml") {
+          res.writeHead(200, { "content-type": "text/yaml" })
+          res.end(body)
+          return
+        }
+        if (req.url === "/models-index.yaml.sha256") {
+          if (sidecar === null) {
+            res.writeHead(404)
+            res.end("missing")
+            return
+          }
+          res.writeHead(200, { "content-type": "text/plain" })
+          res.end(`${sidecar}  models-index.yaml\n`)
+          return
+        }
+        res.writeHead(404)
+        res.end()
+      })
+      await new Promise<void>((r) => server.listen(0, "127.0.0.1", r))
+      const { port } = server.address() as { port: number }
+      try {
+        await fn(`http://127.0.0.1:${port}/models-index.yaml`)
+      } finally {
+        await new Promise<void>((r) => server.close(() => r()))
+      }
+    }
+
+    await withServer(good, async (url) => {
+      await expect(resolve("nope", url)).rejects.toThrow(/unknown model id/)
+    })
+    await withServer(bad, async (url) => {
+      await expect(resolve("nope", url)).rejects.toThrow(/index sha256 mismatch/)
+    })
+    await withServer(null, async (url) => {
+      await expect(resolve("nope", url)).rejects.toThrow(/index sha256/)
+    })
+  })
 })
 
 const e2eZip = process.env["SECRYST_E2E_ZIP"]

@@ -3,6 +3,10 @@
  * Python and Ruby runtimes): resolve id -> channel URL, verify a cached
  * copy against the index sha256, or download -> verify -> install.
  *
+ * The index itself is a GitHub Release asset (never raw.githubusercontent):
+ * DEFAULT_INDEX_URL points at models-index.yaml on an index-vN tag, and
+ * HTTP fetches always verify the sibling .sha256 sidecar before parsing.
+ *
  * Node persists to ~/.cache/interscript/models/<id>/ (fs, atomic
  * rename); browsers keep the verified bytes in memory (the Cache API
  * integration is future work). Overrides: SECRYST_INDEX,
@@ -12,7 +16,7 @@
 import { load as loadYaml } from "js-yaml"
 
 export const DEFAULT_INDEX_URL =
-  "https://raw.githubusercontent.com/interscript/interscript-ml/main/models.yaml"
+  "https://github.com/interscript/interscript-ml/releases/download/index-v1/models-index.yaml"
 
 export interface Part {
   url: string
@@ -49,11 +53,36 @@ function cacheDir(): string {
   return process.env["SECRYST_CACHE"] ?? `${home}/.cache/interscript`
 }
 
+async function fetchHttpBytes(url: string): Promise<Uint8Array> {
+  const res = await fetch(url)
+  if (!res.ok) throw new RegistryError(`fetch failed: ${url} -> ${res.status}`)
+  return new Uint8Array(await res.arrayBuffer())
+}
+
 async function fetchIndex(source: string): Promise<Record<string, IndexEntry>> {
-  const text =
-    source.startsWith("http://") || source.startsWith("https://")
-      ? await (await fetch(source)).text()
-      : new TextDecoder().decode((await nodeFs())!.readFileSync(source))
+  let text: string
+  if (source.startsWith("http://") || source.startsWith("https://")) {
+    const bytes = await fetchHttpBytes(source)
+    const sidecarRes = await fetch(`${source}.sha256`)
+    if (!sidecarRes.ok) {
+      throw new RegistryError(
+        `index sha256 sidecar missing: ${source}.sha256 -> ${sidecarRes.status}`,
+      )
+    }
+    const expected = (await sidecarRes.text()).trim().split(/\s+/)[0]
+    if (!expected || !/^[0-9a-f]{64}$/i.test(expected)) {
+      throw new RegistryError(`index sha256 sidecar malformed: ${source}.sha256`)
+    }
+    const actual = await sha256Hex(bytes)
+    if (actual !== expected.toLowerCase()) {
+      throw new RegistryError(
+        `index sha256 mismatch: got ${actual}, sidecar says ${expected.toLowerCase()}`,
+      )
+    }
+    text = new TextDecoder().decode(bytes)
+  } else {
+    text = new TextDecoder().decode((await nodeFs())!.readFileSync(source))
+  }
   const raw = loadYaml(text) as {
     version?: number
     models?: Record<string, Record<string, string | Part[]>>
