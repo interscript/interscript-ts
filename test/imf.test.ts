@@ -237,7 +237,6 @@ describe("registry", () => {
     writeFileSync(join(dir, "models.yaml"), "version: 1\nmodels: {}\n")
     process.env["SECRYST_INDEX"] = join(dir, "models.yaml")
     try {
-      const { transliterateAsync: run } = await import("../src/index.js")
       const map = {
         schemaVersion: 1,
         systemCode: "test-secryst-funcall",
@@ -253,7 +252,7 @@ describe("registry", () => {
         functions: new Map(),
       }
       configure({ strategies: [(code: string) => (code === map.systemCode ? map : undefined)] })
-      await expect(run("test-secryst-funcall", "abc")).rejects.toThrow(
+      await expect(transliterateAsync("test-secryst-funcall", "abc")).rejects.toThrow(
         /unknown model id 'nope-1.0'/,
       )
     } finally {
