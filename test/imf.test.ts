@@ -212,6 +212,57 @@ describe("registry", () => {
       await expect(resolve("nope", url)).rejects.toThrow(/index sha256/)
     })
   })
+  it("the public ./ml surface no longer exports the deprecated manifest APIs", async () => {
+    const ml = (await import("../src/ml/index.js")) as unknown as Record<string, unknown>
+    for (const k of [
+      "loadManifest",
+      "resolveManifestEntry",
+      "artifactUrls",
+      "sidecarFilenames",
+      "setInlineManifest",
+      "setManifestUrl",
+      "setModelBase",
+      "getModelBase",
+    ]) {
+      expect(ml[k], `ml.${k} should be gone`).toBeUndefined()
+    }
+  })
+
+  it("secryst funcall resolves model ids through the IMF registry", async () => {
+    const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    const { configure, reset, transliterateAsync } = await import("../src/index.js")
+    const dir = mkdtempSync(join(tmpdir(), "imf-funcall-"))
+    writeFileSync(join(dir, "models.yaml"), "version: 1\nmodels: {}\n")
+    process.env["SECRYST_INDEX"] = join(dir, "models.yaml")
+    try {
+      const { transliterateAsync: run } = await import("../src/index.js")
+      const map = {
+        schemaVersion: 1,
+        systemCode: "test-secryst-funcall",
+        dependencies: [],
+        stages: [
+          {
+            kind: "stage",
+            name: "main",
+            rules: [{ kind: "funcall", name: "secryst", kwargs: { config: "nope-1.0" } }],
+          },
+        ],
+        aliases: new Map(),
+        functions: new Map(),
+      }
+      configure({ strategies: [(code: string) => (code === map.systemCode ? map : undefined)] })
+      await expect(run("test-secryst-funcall", "abc")).rejects.toThrow(
+        /unknown model id 'nope-1.0'/,
+      )
+    } finally {
+      delete process.env["SECRYST_INDEX"]
+      reset()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it("the public ./ml surface re-exports the IMF registry", async () => {
     const ml = await import("../src/ml/index.js")
     const imf = (ml as { imf?: Record<string, unknown> }).imf

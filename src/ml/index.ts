@@ -33,35 +33,6 @@ export { registerModel, loadModel, registeredKinds, resetModels } from "./regist
 export { createSession, detectBackend } from "./session/index.js"
 
 /**
- * @deprecated CDN-base override for the deprecated manifest-based
- *   provisioner. IMF models resolve through the GitHub Releases
- *   index instead.
- */
-export { setModelBase, getModelBase } from "./provision/base.js"
-
-/**
- * @deprecated The manifest-based provisioner (loose .onnx + sidecars
- *   behind a version→URL manifest) is superseded by the IMF registry:
- *   `import { imf } from "interscript/ml"` → `imf.resolve("<model-id>")`
- *   (GitHub Releases index, sha256-verified zips). Kept for explicit-URL
- *   provisioning and inline-manifest (test/air-gapped) use; no manifest
- *   is published anymore.
- */
-export {
-  loadManifest,
-  resolveManifestEntry,
-  artifactUrls,
-  sidecarFilenames,
-  setInlineManifest,
-  setManifestUrl,
-  type AssetVariant,
-  /** @deprecated — see the block comment above */
-  type Manifest,
-  /** @deprecated — see the block comment above */
-  type ManifestModelEntry,
-} from "./provision/manifest.js"
-
-/**
  * The IMF v1 registry — models.yaml resolution over GitHub Releases
  * (sha256-sidecar-verified). This is the canonical way to load models
  * by id; `import { imf } from "interscript/ml"`.

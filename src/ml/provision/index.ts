@@ -6,23 +6,15 @@
  * browsers); falls back to filesystem reads in Node when given a
  * `file:` or relative URL.
  *
- * The manifest (version → URL mapping) lives in `./manifest.ts`.
- * The base URL (CDN mirror override) lives in `./base.ts`.
- *
- * Adding a new provision source (e.g. IPFS, BitTorrent) = adding a
- * new provisioner file. Existing code never changes (OCP).
+ * The manifest-based resolution layer was removed in 4.0.0: models
+ * resolve through the IMF registry (`imf`, GitHub Releases index,
+ * sha256-verified) or an explicit `url` on the ModelRef.
  */
 
 import type { ModelArtifacts, ModelRef } from "../types.js"
 import type { InferenceSession } from "../session/index.js"
 import { createSession } from "../session/index.js"
-import {
-  artifactUrls,
-  resolveManifestEntry,
-  sidecarFilenames,
-  type AssetFormat,
-  type AssetVariant,
-} from "./manifest.js"
+import type { AssetFormat, AssetVariant } from "./types.js"
 
 export interface ProvisionedModel {
   readonly session: InferenceSession
@@ -61,10 +53,9 @@ export interface ProvisionOptions {
 }
 
 /**
- * Provision a model from the manifest. Resolves the task version,
- * downloads the model file from the CDN (falls back to GitHub
- * Releases), opens an inference session, and fetches sidecar
- * artifacts (vocab, config, checksum) in parallel.
+ * Provision a model from an explicit URL. Downloads the model file,
+ * opens an inference session, and returns it with any artifacts the
+ * caller fetches separately.
  *
  * In Node, can read from the filesystem if `url` starts with `file:`
  * or is a relative path.
@@ -73,35 +64,19 @@ export async function provisionModel(
   ref: ModelRef,
   opts: ProvisionOptions = {},
 ): Promise<ProvisionedModel> {
-  const variant = opts.variant ?? "q8"
   const format = opts.format ?? "onnx"
   const webgpu = opts.webgpu ?? true
 
-  const modelUrl = ref.url ?? (await resolveModelUrl(ref, variant, format))
+  if (!ref.url) {
+    throw new Error(
+      `No url on ModelRef kind=${ref.kind} id=${ref.id}. Load models via ` +
+        `\`import { imf } from "interscript/ml"\` and \`imf.resolve("${ref.id}")\` ` +
+        `(GitHub Releases index, sha256-verified), or pass an explicit \`url\` on the ModelRef.`,
+    )
+  }
 
-  const modelBuffer = await fetchBytesWithFallback(modelUrl)
-
-  const sidecars = await resolveSidecarUrls(ref, variant, format)
+  const modelBuffer = await fetchBytesWithFallback(ref.url)
   const artifacts: Record<string, Uint8Array | string> = {}
-  await Promise.all(
-    sidecars.map(async ({ filename, url }) => {
-      try {
-        const bytes = await fetchBytesWithFallback(url)
-        if (
-          filename.endsWith(".json") ||
-          filename.endsWith(".yaml") ||
-          filename.endsWith(".yml") ||
-          filename.endsWith(".sha256")
-        ) {
-          artifacts[filename] = new TextDecoder().decode(bytes)
-        } else {
-          artifacts[filename] = bytes
-        }
-      } catch {
-        // Sidecars are optional; missing ones are skipped.
-      }
-    }),
-  )
 
   const sessionOpts: Record<string, unknown> = { webgpu }
   if (format === "tflite") {
@@ -112,42 +87,6 @@ export async function provisionModel(
   }
   const session = await createSession(modelBuffer, sessionOpts)
   return { session, artifacts }
-}
-
-async function resolveModelUrl(
-  ref: ModelRef,
-  variant: AssetVariant,
-  format: AssetFormat,
-): Promise<string> {
-  const entry = await resolveManifestEntry(ref.kind, ref.id)
-  if (!entry) {
-    throw new Error(
-      `No manifest entry for kind=${ref.kind} id=${ref.id}. The manifest-based ` +
-        `provisioner is deprecated; load models via \`import { imf } from "interscript/ml"\` ` +
-        `and \`imf.resolve("${ref.id}")\` (GitHub Releases index, sha256-verified), ` +
-        `or pass an explicit \`url\` on the ModelRef.`,
-    )
-  }
-  const { primary } = artifactUrls(entry, variant, format)
-  return primary
-}
-
-async function resolveSidecarUrls(
-  ref: ModelRef,
-  variant: AssetVariant,
-  format: AssetFormat,
-): Promise<readonly { filename: string; url: string }[]> {
-  // If the caller provided an explicit URL, skip manifest-based sidecar
-  // resolution — they've taken control of provisioning.
-  if (ref.url) return []
-  const entry = await resolveManifestEntry(ref.kind, ref.id)
-  if (!entry) return []
-  const { primary, assetName } = artifactUrls(entry, variant, format)
-  const base = primary.slice(0, primary.lastIndexOf("/") + 1)
-  return sidecarFilenames(entry, variant, format).map((filename) => ({
-    filename,
-    url: `${base}${filename.startsWith(assetName) ? filename : filename}`,
-  }))
 }
 
 /**
