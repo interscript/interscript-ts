@@ -142,13 +142,17 @@ async function executeFuncallAsync(
     ctx.current = await rababa(ctx.current, rule.kwargs as { config?: string })
     return
   }
-  // Other ASYNC_FUNCTIONS (secryst, etc.) still go through the generic
-  // ML registry.
+  // Other ASYNC_FUNCTIONS (secryst, etc.) resolve model ids through
+  // the IMF registry (GitHub Releases index, sha256-verified).
   if (ASYNC_FUNCTIONS.has(rule.name)) {
-    const { loadModel } = await import("../ml/index.js")
+    const { imf } = await import("../ml/index.js")
     const modelId = (rule.kwargs?.config ?? rule.kwargs?.model ?? "default") as string
-    const model = await loadModel({ kind: rule.name as "secryst", id: modelId })
-    ctx.current = await model.transform(ctx.current)
+    const model = await imf.IMFModel.load(modelId)
+    try {
+      ctx.current = await model.translate(ctx.current)
+    } finally {
+      await model.dispose()
+    }
     return
   }
   // Fall back to the sync funcall executor for all other functions.
