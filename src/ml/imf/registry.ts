@@ -140,6 +140,30 @@ export interface ResolvedZip {
   path?: string
 }
 
+/** Browser Cache API persistence: verified model bytes survive page
+ * reloads, so a model downloads once per browser. Node hosts persist
+ * to the filesystem instead; both paths re-verify against the index
+ * sha256 on every use — the cache is never trusted blindly. */
+const CACHE_NAME = "interscript-imf-models-v1"
+
+// Minimal structural types — the DOM lib isn't in this package's tsconfig
+interface BrowserCache {
+  match(request: string): Promise<Response | undefined>
+  put(request: string, response: Response): Promise<void>
+  delete(request: string): Promise<boolean>
+}
+
+declare const caches: { open(name: string): Promise<BrowserCache> } | undefined
+
+function cacheKey(modelId: string, filename: string): string {
+  return `https://imf.interscript.org/cache/${modelId}/${filename}`
+}
+
+async function browserCache(): Promise<BrowserCache | undefined> {
+  if (typeof caches === "undefined") return undefined
+  return await caches.open(CACHE_NAME)
+}
+
 export async function resolve(modelId: string, indexUrl?: string): Promise<ResolvedZip> {
   const source = indexUrl ?? process.env["SECRYST_INDEX"] ?? DEFAULT_INDEX_URL
   const entries = await fetchIndex(source)
@@ -155,6 +179,16 @@ export async function resolve(modelId: string, indexUrl?: string): Promise<Resol
   if (fs?.existsSync(target)) {
     const cached = fs.readFileSync(target)
     if ((await sha256Hex(cached)) === entry.sha256) return { bytes: cached, path: target }
+  }
+
+  const cache = await browserCache()
+  if (cache) {
+    const hit = await cache.match(cacheKey(modelId, entry.filename))
+    if (hit) {
+      const cached = new Uint8Array(await hit.arrayBuffer())
+      if ((await sha256Hex(cached)) === entry.sha256) return { bytes: cached }
+      await cache.delete(cacheKey(modelId, entry.filename))
+    }
   }
 
   if (entry.parts?.length) {
@@ -197,6 +231,7 @@ export async function resolve(modelId: string, indexUrl?: string): Promise<Resol
         `assembled ${entry.filename} sha256 mismatch: got ${actual}, index says ${entry.sha256}`,
       )
     }
+    if (cache) await cache.put(cacheKey(modelId, entry.filename), new Response(bytes))
     return { bytes }
   }
 
@@ -217,5 +252,6 @@ export async function resolve(modelId: string, indexUrl?: string): Promise<Resol
     fs.renameSync(tmp, target)
     return { bytes, path: target }
   }
+  if (cache) await cache.put(cacheKey(modelId, entry.filename), new Response(bytes))
   return { bytes }
 }

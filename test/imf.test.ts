@@ -158,6 +158,89 @@ describe("registry", () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  it("persists verified models in the browser Cache API (download once)", async () => {
+    const { createHash } = await import("node:crypto")
+    const { createServer } = await import("node:http")
+    const sha = createHash("sha256").update(fixtureZip).digest("hex")
+    let channelUp = true
+    let indexBody = ""
+    const server = createServer((req, res) => {
+      if (req.url === "/index.yaml") {
+        res.writeHead(200, { "content-type": "text/yaml" })
+        res.end(indexBody)
+        return
+      }
+      if (req.url === "/index.yaml.sha256") {
+        const digest = createHash("sha256").update(indexBody).digest("hex")
+        res.writeHead(200)
+        res.end(`${digest}  index.yaml\n`)
+        return
+      }
+      if (req.url === "/tiny.zip") {
+        if (!channelUp) {
+          res.writeHead(404)
+          res.end("gone")
+          return
+        }
+        res.writeHead(200)
+        res.end(fixtureZip)
+        return
+      }
+      res.writeHead(404)
+      res.end()
+    })
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r))
+    const port = (server.address() as { port: number }).port
+    const indexUrl = `http://127.0.0.1:${port}/index.yaml`
+    indexBody = `version: 1\nmodels:\n  tiny-1.0:\n    filename: tiny.zip\n    url: http://127.0.0.1:${port}/tiny.zip\n    sha256: ${sha}\n`
+
+    const store = new Map<string, Response>()
+    const fakeCache = {
+      async match(req: RequestInfo) {
+        const key = String(req instanceof Request ? req.url : req)
+        return store.get(key)?.clone()
+      },
+      async put(req: RequestInfo, res: Response) {
+        const key = String(req instanceof Request ? req.url : req)
+        store.set(key, res.clone())
+      },
+      async delete(req: RequestInfo) {
+        const key = String(req instanceof Request ? req.url : req)
+        return store.delete(key)
+      },
+    }
+    const g = globalThis as Record<string, unknown>
+    g["caches"] = { open: async () => fakeCache }
+    // simulate a browser host: no Node fs, so the Cache API path runs
+    const versions = process.versions as { node?: string }
+    const realNode = versions.node
+    delete versions.node
+    try {
+      process.env["SECRYST_CACHE"] = undefined
+      const first = await resolve("tiny-1.0", indexUrl)
+      expect([...first.bytes]).toEqual([...fixtureZip])
+      expect(store.size).toBe(1)
+
+      // channel dies; the cached copy serves, still sha-verified
+      channelUp = false
+      const second = await resolve("tiny-1.0", indexUrl)
+      expect([...second.bytes]).toEqual([...fixtureZip])
+
+      // a corrupted cache entry falls through to a fresh download
+      channelUp = true
+      const key = store.keys().next().value as string
+      store.set(key, new Response(new Uint8Array([1, 2, 3])))
+      const third = await resolve("tiny-1.0", indexUrl)
+      expect([...third.bytes]).toEqual([...fixtureZip])
+    } finally {
+      if (realNode !== undefined) versions.node = realNode
+      delete g["caches"]
+      delete process.env["SECRYST_CACHE"]
+      await new Promise<void>((r) => server.close(() => r()))
+    }
+  })
+
   it("DEFAULT_INDEX_URL pins a GitHub Release asset, never raw", async () => {
     const { DEFAULT_INDEX_URL } = await import("../src/ml/imf/registry.js")
     expect(DEFAULT_INDEX_URL).toMatch(
