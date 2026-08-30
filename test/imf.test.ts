@@ -256,7 +256,7 @@ describe("registry", () => {
   it("DEFAULT_INDEX_URL pins a GitHub Release asset, never raw", async () => {
     const { DEFAULT_INDEX_URL } = await import("../src/ml/imf/registry.js")
     expect(DEFAULT_INDEX_URL).toMatch(
-      /^https:\/\/github\.com\/interscript\/interscript-ml\/releases\/download\/index-v\d+\/models-index\.yaml$/,
+      /^https:\/\/github\.com\/interscript\/interscript-ml\/releases\/download\/index-v2\/models-index\.yaml$/,
     )
     expect(DEFAULT_INDEX_URL).not.toMatch(/raw\.githubusercontent/)
   })
@@ -364,7 +364,7 @@ describe("registry", () => {
     expect(typeof imf!["resolve"]).toBe("function")
     expect(typeof imf!["IMFModel"]).toBe("function")
     expect(imf!["DEFAULT_INDEX_URL"]).toMatch(
-      /github\.com\/interscript\/interscript-ml\/releases\/download\/index-v\d+\/models-index\.yaml/,
+      /github\.com\/interscript\/interscript-ml\/releases\/download\/index-v2\/models-index\.yaml/,
     )
   })
 })
