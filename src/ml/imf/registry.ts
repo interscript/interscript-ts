@@ -49,8 +49,10 @@ async function nodeFs(): Promise<NodeFs | undefined> {
 }
 
 function cacheDir(): string {
-  const home = process.env["HOME"] ?? process.env["USERPROFILE"] ?? "."
-  return process.env["SECRYST_CACHE"] ?? `${home}/.cache/interscript`
+  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
+    ?.env
+  const home = env?.["HOME"] ?? env?.["USERPROFILE"] ?? "."
+  return env?.["SECRYST_CACHE"] ?? `${home}/.cache/interscript`
 }
 
 async function fetchHttpBytes(url: string): Promise<Uint8Array> {
@@ -293,7 +295,9 @@ export async function resolve(
   indexUrl?: string,
   opts: ResolveOptions = {},
 ): Promise<ResolvedZip> {
-  const source = indexUrl ?? process.env["SECRYST_INDEX"] ?? DEFAULT_INDEX_URL
+  const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
+    ?.env
+  const source = indexUrl ?? env?.["SECRYST_INDEX"] ?? DEFAULT_INDEX_URL
   let entries: Record<string, IndexEntry>
   try {
     entries = await fetchIndex(source)
@@ -335,7 +339,7 @@ export async function resolve(
       const whole = createHash("sha256")
       const dir = target.substring(0, target.lastIndexOf("/"))
       fs.mkdirSync(dir, { recursive: true })
-      const tmp = `${target}.part.${process.pid}`
+      const tmp = `${target}.part.${(globalThis as { process?: { pid?: number } }).process?.pid ?? 0}`
       fs.writeFileSync(tmp, new Uint8Array(0))
       await fetchParts(entry, fs, (bytes) => {
         whole.update(bytes)
@@ -385,7 +389,7 @@ export async function resolve(
   if (fs) {
     const dir = target.substring(0, target.lastIndexOf("/"))
     fs.mkdirSync(dir, { recursive: true })
-    const tmp = `${target}.part.${process.pid}`
+    const tmp = `${target}.part.${(globalThis as { process?: { pid?: number } }).process?.pid ?? 0}`
     fs.writeFileSync(tmp, bytes)
     fs.renameSync(tmp, target)
     return { bytes, path: target }
