@@ -204,7 +204,8 @@ async function fetchWithProgress(
     } catch {
       continue
     }
-    if (!res.ok && res.status !== 206) throw new RegistryError(`fetch failed: ${url} -> ${res.status}`)
+    if (!res.ok && res.status !== 206)
+      throw new RegistryError(`fetch failed: ${url} -> ${res.status}`)
     if (received === 0) total = Number(res.headers.get("content-length") ?? 0)
     else if (res.status !== 206) {
       // server ignored Range: restart cleanly rather than corrupt
