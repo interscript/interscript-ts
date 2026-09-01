@@ -233,7 +233,10 @@ describe("registry", () => {
       process.env["SECRYST_CACHE"] = undefined
       const first = await withBrowserHost(() => resolve("tiny-1.0", indexUrl))
       expect([...first.bytes]).toEqual([...fixtureZip])
-      expect(store.size).toBe(1)
+      // zip + the offline index copy (TODO.client-work 05)
+      expect(store.size).toBe(2)
+      const zipKeys = [...store.keys()].filter((k) => k.endsWith("tiny.zip"))
+      expect(zipKeys.length).toBe(1)
 
       // channel dies; the cached copy serves, still sha-verified
       channelUp = false
