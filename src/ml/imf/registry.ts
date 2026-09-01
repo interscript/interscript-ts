@@ -62,7 +62,7 @@ async function fetchHttpBytes(url: string): Promise<Uint8Array> {
 async function fetchIndex(source: string): Promise<Record<string, IndexEntry>> {
   if (source.startsWith("http://") || source.startsWith("https://")) {
     const bytes = await fetchHttpBytes(source)
-    const sidecarRes = await fetch(`${source}.sha256`)
+    const sidecarRes = await fetch(`${corsAssetUrl(source)}.sha256`)
     if (!sidecarRes.ok) {
       throw new RegistryError(
         `index sha256 sidecar missing: ${source}.sha256 -> ${sidecarRes.status}`,
@@ -144,7 +144,7 @@ function indexCacheKey(source: string): string {
 async function cacheIndexForOffline(source: string): Promise<void> {
   if (typeof caches === "undefined") return
   try {
-    const res = await fetch(source)
+    const res = await fetch(corsAssetUrl(source))
     if (res.ok) await (await caches.open(CACHE_NAME)).put(indexCacheKey(source), res.clone())
   } catch {
     /* best-effort */
@@ -230,6 +230,9 @@ async function fetchWithProgress(
     }
     if (!dropped) break
   }
+  if (received === 0) {
+    throw new RegistryError(`fetch produced zero bytes (5 attempts): ${url}`)
+  }
   const out = new Uint8Array(received)
   let offset = 0
   for (const chunk of chunks) {
@@ -248,6 +251,18 @@ export interface ResolvedZip {
  * reloads, so a model downloads once per browser. Node hosts persist
  * to the filesystem instead; both paths re-verify against the index
  * sha256 on every use — the cache is never trusted blindly. */
+
+const RELEASE_ORIGIN = "https://github.com/interscript/interscript-ml/releases/download/"
+const CORS_FRONT_DOOR = "https://api.interscript.org/v1/assets/"
+
+/** In browsers, GH Releases are not CORS-fetchable (the github.com
+ * redirect hop lacks ACAO); rewrite release URLs to the API's
+ * streaming front door. Content authenticity is unaffected: the
+ * sha256 verification proves whatever channel delivered the bytes. */
+export function corsAssetUrl(url: string): string {
+  return url.startsWith(RELEASE_ORIGIN) ? CORS_FRONT_DOOR + url.slice(RELEASE_ORIGIN.length) : url
+}
+
 const CACHE_NAME = "interscript-imf-models-v1"
 
 // Minimal structural types — the DOM lib isn't in this package's tsconfig
@@ -360,7 +375,7 @@ export async function resolve(
 
   const bytes = entry.url.startsWith("file://")
     ? fs!.readFileSync(entry.url.replace(/^file:\/\//, ""))
-    : await fetchWithProgress(entry.url, opts.onProgress)
+    : await fetchWithProgress(corsAssetUrl(entry.url), opts.onProgress)
   const actual = await sha256Hex(bytes)
   if (actual !== entry.sha256) {
     throw new RegistryError(
