@@ -185,24 +185,49 @@ async function evictStaleEntries(
   }
 }
 
-/** Fetch with progress via a streamed body (TODO.client-work 03). */
+/** Fetch with progress via a streamed body, resuming across dropped
+ * connections with Range requests (TODO.client-work 03/09): a flaky
+ * network continues from the received byte offset instead of
+ * restarting a 250MB artifact. */
 async function fetchWithProgress(
   url: string,
   onProgress?: (fraction: number, bytes: number) => void,
 ): Promise<Uint8Array> {
   if (!onProgress) return new Uint8Array(await (await fetch(url)).arrayBuffer())
-  const res = await fetch(url)
-  if (!res.ok || !res.body) throw new RegistryError(`fetch failed: ${url} -> ${res.status}`)
-  const total = Number(res.headers.get("content-length") ?? 0)
-  const reader = res.body.getReader()
   const chunks: Uint8Array[] = []
   let received = 0
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    chunks.push(value)
-    received += value.length
-    onProgress(total > 0 ? received / total : 0, received)
+  let total = 0
+  for (let attempt = 0; attempt < 5; attempt++) {
+    let res: Response
+    try {
+      res = await fetch(url, received > 0 ? { headers: { range: `bytes=${received}-` } } : {})
+    } catch {
+      continue
+    }
+    if (!res.ok && res.status !== 206) throw new RegistryError(`fetch failed: ${url} -> ${res.status}`)
+    if (received === 0) total = Number(res.headers.get("content-length") ?? 0)
+    else if (res.status !== 206) {
+      // server ignored Range: restart cleanly rather than corrupt
+      chunks.length = 0
+      received = 0
+      total = Number(res.headers.get("content-length") ?? 0)
+    }
+    const reader = res.body?.getReader()
+    if (!reader) continue
+    let dropped = false
+    for (;;) {
+      try {
+        const { done, value } = await reader.read()
+        if (done) break
+        chunks.push(value)
+        received += value.length
+        onProgress(total > 0 ? Math.min(1, received / total) : 0, received)
+      } catch {
+        dropped = true
+        break
+      }
+    }
+    if (!dropped) break
   }
   const out = new Uint8Array(received)
   let offset = 0
