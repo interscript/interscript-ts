@@ -60,7 +60,6 @@ async function fetchHttpBytes(url: string): Promise<Uint8Array> {
 }
 
 async function fetchIndex(source: string): Promise<Record<string, IndexEntry>> {
-  let text: string
   if (source.startsWith("http://") || source.startsWith("https://")) {
     const bytes = await fetchHttpBytes(source)
     const sidecarRes = await fetch(`${source}.sha256`)
@@ -79,10 +78,13 @@ async function fetchIndex(source: string): Promise<Record<string, IndexEntry>> {
         `index sha256 mismatch: got ${actual}, sidecar says ${expected.toLowerCase()}`,
       )
     }
-    text = new TextDecoder().decode(bytes)
-  } else {
-    text = new TextDecoder().decode((await nodeFs())!.readFileSync(source))
+    return fetchIndexFromText(new TextDecoder().decode(bytes))
   }
+  const local = new TextDecoder().decode((await nodeFs())!.readFileSync(source))
+  return fetchIndexFromText(local)
+}
+
+function fetchIndexFromText(text: string): Record<string, IndexEntry> {
   const raw = loadYaml(text) as {
     version?: number
     models?: Record<string, Record<string, string | Part[]>>
@@ -135,6 +137,82 @@ async function fetchParts(
   }
 }
 
+function indexCacheKey(source: string): string {
+  return source
+}
+
+async function cacheIndexForOffline(source: string): Promise<void> {
+  if (typeof caches === "undefined") return
+  try {
+    const res = await fetch(source)
+    if (res.ok) await (await caches.open(CACHE_NAME)).put(indexCacheKey(source), res.clone())
+  } catch {
+    /* best-effort */
+  }
+}
+
+async function readCachedIndex(source: string): Promise<Record<string, IndexEntry> | undefined> {
+  const cache = await browserCache()
+  if (!cache) return undefined
+  const hit = await cache.match(indexCacheKey(source))
+  if (!hit) return undefined
+  try {
+    return await fetchIndexFromText(
+      new TextDecoder().decode(new Uint8Array(await hit.arrayBuffer())),
+    )
+  } catch {
+    return undefined
+  }
+}
+
+/** Drop cached zip entries whose (id, filename) no longer matches the
+ * current index — sha changes leave orphans otherwise (05). */
+async function evictStaleEntries(
+  cache: BrowserCache,
+  entries: Record<string, IndexEntry>,
+): Promise<void> {
+  try {
+    const keys = await (cache as unknown as { keys(): Promise<readonly unknown[]> }).keys()
+    const valid = new Set(Object.entries(entries).map(([id, e]) => cacheKey(id, e.filename)))
+    for (const key of keys) {
+      const url = String((key as { url?: string }).url ?? key)
+      if (url.startsWith("https://imf.interscript.org/cache/") && !valid.has(url)) {
+        await cache.delete(url)
+      }
+    }
+  } catch {
+    /* best-effort */
+  }
+}
+
+/** Fetch with progress via a streamed body (TODO.client-work 03). */
+async function fetchWithProgress(
+  url: string,
+  onProgress?: (fraction: number, bytes: number) => void,
+): Promise<Uint8Array> {
+  if (!onProgress) return new Uint8Array(await (await fetch(url)).arrayBuffer())
+  const res = await fetch(url)
+  if (!res.ok || !res.body) throw new RegistryError(`fetch failed: ${url} -> ${res.status}`)
+  const total = Number(res.headers.get("content-length") ?? 0)
+  const reader = res.body.getReader()
+  const chunks: Uint8Array[] = []
+  let received = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+    received += value.length
+    onProgress(total > 0 ? received / total : 0, received)
+  }
+  const out = new Uint8Array(received)
+  let offset = 0
+  for (const chunk of chunks) {
+    out.set(chunk, offset)
+    offset += chunk.length
+  }
+  return out
+}
+
 export interface ResolvedZip {
   bytes: Uint8Array
   path?: string
@@ -164,9 +242,27 @@ async function browserCache(): Promise<BrowserCache | undefined> {
   return await caches.open(CACHE_NAME)
 }
 
-export async function resolve(modelId: string, indexUrl?: string): Promise<ResolvedZip> {
+export interface ResolveOptions {
+  /** 0..1 download progress (TODO.client-work 03) */
+  readonly onProgress?: (fraction: number, bytes: number) => void
+}
+
+export async function resolve(
+  modelId: string,
+  indexUrl?: string,
+  opts: ResolveOptions = {},
+): Promise<ResolvedZip> {
   const source = indexUrl ?? process.env["SECRYST_INDEX"] ?? DEFAULT_INDEX_URL
-  const entries = await fetchIndex(source)
+  let entries: Record<string, IndexEntry>
+  try {
+    entries = await fetchIndex(source)
+    await cacheIndexForOffline(source)
+  } catch (err) {
+    // offline-first (05): fall back to the cached index copy
+    const cached = await readCachedIndex(source)
+    if (!cached) throw err
+    entries = cached
+  }
   const entry = entries[modelId]
   if (!entry) {
     throw new RegistryError(
@@ -189,6 +285,7 @@ export async function resolve(modelId: string, indexUrl?: string): Promise<Resol
       if ((await sha256Hex(cached)) === entry.sha256) return { bytes: cached }
       await cache.delete(cacheKey(modelId, entry.filename))
     }
+    await evictStaleEntries(cache, entries)
   }
 
   if (entry.parts?.length) {
@@ -237,7 +334,7 @@ export async function resolve(modelId: string, indexUrl?: string): Promise<Resol
 
   const bytes = entry.url.startsWith("file://")
     ? fs!.readFileSync(entry.url.replace(/^file:\/\//, ""))
-    : new Uint8Array(await (await fetch(entry.url)).arrayBuffer())
+    : await fetchWithProgress(entry.url, opts.onProgress)
   const actual = await sha256Hex(bytes)
   if (actual !== entry.sha256) {
     throw new RegistryError(

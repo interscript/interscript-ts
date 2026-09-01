@@ -10,6 +10,7 @@ import { createSession, type InferenceSession } from "../session/index.js"
 import type { Tensor } from "../types.js"
 import { verifyAndRead, parseManifest, type IMFManifest } from "./loader.js"
 import { resolve } from "./registry.js"
+import { normalizeArabicInput, repetitionGuardCut } from "./guards.js"
 import { EOS_ID, PAD_ID, decode, encode } from "./tokens.js"
 
 interface InputMeta {
@@ -20,6 +21,15 @@ interface InputMeta {
 
 interface MetadataSession extends InferenceSession {
   readonly inputMetadata?: readonly InputMeta[]
+}
+
+export interface DecodeOptions {
+  /** skip input normalization (raw text) */
+  readonly raw?: boolean
+  /** streaming: called per emitted token (TODO.client-work 03) */
+  readonly onToken?: (token: number, step: number) => void
+  /** per-step top1-top2 logit gap; low gap = low confidence (06) */
+  readonly onConfidence?: (gap: number, step: number) => void
 }
 
 export class IMFModel {
@@ -62,13 +72,15 @@ export class IMFModel {
     return IMFModel.fromZipBytes(resolved.bytes)
   }
 
-  async translate(text: string, maxLen = 256): Promise<string> {
-    const ids = encode(text)
+  async translate(text: string, maxLen = 256, opts: DecodeOptions = {}): Promise<string> {
+    // models train on stripped input: normalize by default (TODO.client-work 02)
+    const normalized = opts.raw === true ? text : normalizeArabicInput(text)
+    const ids = encode(normalized)
     if (ids.length === 1) return ""
     const hidden = await this.runEncoder(ids)
     const tokens = this.kv
-      ? await this.greedyKv(hidden, maxLen)
-      : await this.greedyPlain(hidden, maxLen)
+      ? await this.greedyKv(hidden, maxLen, opts)
+      : await this.greedyPlain(hidden, maxLen, opts)
     return decode(tokens)
   }
 
@@ -123,25 +135,33 @@ export class IMFModel {
     return feeds
   }
 
-  private argmaxLastStep(logits: Tensor): number {
+  private argmaxLastStep(logits: Tensor): { token: number; gap: number } {
     const dims = logits.dims
     const classes = dims[dims.length - 1]!
     const data = logits.data as Float32Array | BigInt64Array
     const base = (dims[dims.length - 2]! - 1) * classes
     let best = 0
     let bestVal = -Infinity
+    let secondVal = -Infinity
     for (let c = 0; c < classes; c++) {
       const v =
         typeof data[base + c] === "bigint" ? Number(data[base + c]) : (data[base + c] as number)
       if (v > bestVal) {
+        secondVal = bestVal
         bestVal = v
         best = c
+      } else if (v > secondVal) {
+        secondVal = v
       }
     }
-    return best
+    return { token: best, gap: bestVal - secondVal }
   }
 
-  private async greedyKv(hidden: Tensor, maxLen: number): Promise<number[]> {
+  private async greedyKv(
+    hidden: Tensor,
+    maxLen: number,
+    opts: DecodeOptions = {},
+  ): Promise<number[]> {
     const generated: number[] = []
     let current = [PAD_ID]
     let present: ReadonlyMap<string, Tensor> | undefined
@@ -161,9 +181,12 @@ export class IMFModel {
         },
         ...this.pastTensors(present),
       })
-      const token = this.argmaxLastStep(outputs["logits"]!)
+      const { token, gap } = this.argmaxLastStep(outputs["logits"]!)
       if (token === EOS_ID) break
       generated.push(token)
+      opts.onToken?.(token, step)
+      opts.onConfidence?.(gap, step)
+      if (repetitionGuardCut(generated, decode(generated))) break
       present = new Map(
         this.pasts.map((spec) => [spec.name, outputs[spec.name.replace("past_", "present_")]!]),
       )
@@ -172,7 +195,11 @@ export class IMFModel {
     return generated
   }
 
-  private async greedyPlain(hidden: Tensor, maxLen: number): Promise<number[]> {
+  private async greedyPlain(
+    hidden: Tensor,
+    maxLen: number,
+    opts: DecodeOptions = {},
+  ): Promise<number[]> {
     const generated: number[] = []
     const decoderIds: number[] = [PAD_ID]
     for (let step = 0; step < maxLen; step++) {
@@ -190,10 +217,13 @@ export class IMFModel {
           dims: hidden.dims,
         },
       })
-      const token = this.argmaxLastStep(outputs["logits"]!)
+      const { token, gap } = this.argmaxLastStep(outputs["logits"]!)
       if (token === EOS_ID) break
       generated.push(token)
       decoderIds.push(token)
+      opts.onToken?.(token, step)
+      opts.onConfidence?.(gap, step)
+      if (repetitionGuardCut(generated, decode(generated))) break
     }
     return generated
   }
