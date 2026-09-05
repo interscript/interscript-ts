@@ -16,7 +16,7 @@
 import { load as loadYaml } from "js-yaml"
 
 export const DEFAULT_INDEX_URL =
-  "https://github.com/interscript/interscript-ml/releases/download/index-v2/models-index.yaml"
+  "https://github.com/interscript/interscript-ml/releases/download/index-v3/models-index.yaml"
 
 export interface Part {
   url: string
