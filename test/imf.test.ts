@@ -367,7 +367,7 @@ describe("registry", () => {
     expect(typeof imf!["resolve"]).toBe("function")
     expect(typeof imf!["IMFModel"]).toBe("function")
     expect(imf!["DEFAULT_INDEX_URL"]).toMatch(
-      /github\.com\/interscript\/interscript-ml\/releases\/download\/index-v2\/models-index\.yaml/,
+      /github\.com\/interscript\/interscript-ml\/releases\/download\/index-v3\/models-index\.yaml/,
     )
   })
 })
