@@ -37,7 +37,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-playground-dts.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:parity": "vitest run test/parity",
