@@ -1,4 +1,4 @@
-# 10 — README quickstart wiring (P3)
+# [COMPLETE 2026-09-08 (PR #68 merged)] 10 — README quickstart wiring (P3)
 
 ## Goal
 The new surfaces discoverable: interscript-ts README links the

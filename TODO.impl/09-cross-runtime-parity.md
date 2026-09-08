@@ -1,4 +1,4 @@
-# [RUBY COMPLETE 2026-09-08; PYTHON HALF SUPERSEDED BY 11] 09 — Cross-runtime example parity (P2)
+# [PYTHON COMPLETE 2026-09-08 (PR #5); RUBY SPEC SHIPPED, OPEN PR #769] 09 — Cross-runtime example parity (P2)
 
 ## Goal
 The example gallery's core conversions expressed as secryst (Ruby)
@@ -23,7 +23,11 @@ iterate it (adding a case = one line).
    playground-specific).
 
 ## Acceptance
-- Ruby: green locally (3/3) and in CI.
+- Python: green — the parity table is the ISC port's gate (PR #5 merged).
+- Ruby: spec verified 3/3 locally against the live corpus; on the repo's
+  monorepo harness it joins 79 pre-existing corpus-era failures — root
+  cause named (reverse_run on nil for .isc documents, interpreter.rb:78);
+  PR #769 held open for owner triage.
 - Python: blocked on item 11 (the runtime cannot parse the corpus at
   all) — its half of the table lands with the ISC port.
 - The conversion table matches `examples/` outputs exactly (Anton

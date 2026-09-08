@@ -1,4 +1,4 @@
-# 06 — Catalogue-driven detection (P1)
+# [COMPLETE 2026-09-08 (PR #68 merged)] 06 — Catalogue-driven detection (P1)
 
 ## Goal
 Detection that can rank a supplied candidate catalogue instead of only
