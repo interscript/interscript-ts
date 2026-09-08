@@ -42,6 +42,21 @@ the only working path). Our package has no such entanglement on the
 maps path: plain ESM with `fflate`/`js-yaml` dependencies, which esm.sh
 resolves. No raw-file fallback is needed.
 
+## The neural session path — probed, not yet proven
+
+Two attempts to complete a full CDN-side session (worker imports
+`esm.sh/.../ml`, resolves `tha-g2p-small-1.0-int4`, creates the ONNX
+session) timed out at 10 and 25 minutes on the 193 MB model fetch
+through the worker — the import and resolve layers never failed; the
+download did not complete in the probe budget. What is verified:
+namespace import (above) and, via the bundler path, a complete
+browser session (the `/neural` demo in production). What remains
+unverified from CDN alone: onnxruntime-web resolving through esm.sh's
+transform of the bare peer specifier inside `interscript/ml`. If a
+CDN session fails there, the import-map fallback is the documented
+remedy: map `onnxruntime-web` to a pinned jsDelivr build on the host
+page before importing.
+
 ## Pins and rules
 
 - **Pin exact versions** (`@5.3.0`, never `@5`): CDN transforms are

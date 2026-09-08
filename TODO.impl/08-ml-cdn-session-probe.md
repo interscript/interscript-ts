@@ -1,4 +1,4 @@
-# 08 — /ml CDN session probe (P2)
+# [COMPLETE-WITH-FINDINGS 2026-09-08] 08 — /ml CDN session probe (P2)
 
 ## Goal
 The last unverified claim in `docs/CDN.md` closed with evidence: a
@@ -23,4 +23,9 @@ CI-proven; the neural path deserves one live proof, kotoshu-style
    document is the artifact, the probe log the evidence.
 
 ## Acceptance
-- CDN.md's neural section states only what the probe observed.
+- CDN.md's neural section states only what the probe observed — and it
+  now does: two timeouts on the 193 MB fetch (10 and 25 min); import
+  and resolve verified; session-from-CDN documented as unproven with
+  the import-map remedy named. The claim in CDN.md matches the
+  evidence; completing the live proof needs a faster probe host and
+  stays open as an optional follow-up, not a blocker.
