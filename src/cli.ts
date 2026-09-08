@@ -32,6 +32,7 @@ import {
   transliterateAsync,
   detect,
   httpStrategy,
+  iscStrategy,
   type LoadStrategy,
 } from "./index.js"
 import { filesystemStrategy } from "./loaders.node.js"
@@ -59,6 +60,9 @@ function buildStrategies(opts: GlobalOpts): LoadStrategy[] {
   return [
     filesystemStrategy(resolve(process.cwd(), "maps")),
     filesystemStrategy(resolve(process.cwd(), "public/maps")),
+    // interscript.org/maps serves the ISC form; the compiled-JSON
+    // fallback stays for library-only artifacts.
+    iscStrategy({ baseUrl: httpOpts.baseUrl }),
     httpStrategy(httpOpts),
   ]
 }
