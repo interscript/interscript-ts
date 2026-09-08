@@ -31,6 +31,8 @@ export interface DetectionResult {
 /** Options for detect(). */
 export interface DetectOptions {
   mapPattern?: string
+  /** Constrain detection to a caller-supplied candidate catalogue. */
+  systems?: readonly SystemCode[]
 }
 
 /**

@@ -17,6 +17,22 @@ A TypeScript-native port of the [Ruby runtime](https://github.com/interscript/in
 npm install interscript
 ```
 
+## Try it
+
+In a browser with no bundler (worker-safe, exact-version pin):
+
+```typescript
+import { transliterateAsync } from "https://esm.sh/interscript@5.3.0"
+```
+
+Full recipe and evidence: [docs/CDN.md](docs/CDN.md). Editor
+autocomplete for injected globals: `dist/playground.d.ts`.
+
+Runnable, CI-verified example scripts — convert, detect-and-chain,
+neural diacritization, batch columns, server mode — live in
+[examples/](examples/); the test suite runs them on every CI pass, so
+they cannot rot.
+
 ## Quick start
 
 ```typescript
