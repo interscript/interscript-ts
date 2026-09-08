@@ -217,9 +217,7 @@ class InterscriptRuntime {
     opts: DetectOptions = {},
   ): Promise<DetectionResult[]> {
     // The runtime's dep-aware loader, so maps with dependencies load whole.
-    return detectInMapsAsync(input, output, this.loader, opts, (code) =>
-      this.loadMapAsync(code),
-    )
+    return detectInMapsAsync(input, output, this.loader, opts, (code) => this.loadMapAsync(code))
   }
 }
 

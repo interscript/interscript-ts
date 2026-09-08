@@ -93,8 +93,7 @@ export async function detectInMapsAsync(
   output: string,
   loader: MapLoader,
   opts: DetectOptions = {},
-  loadMap: (systemCode: SystemCode) => Promise<CompiledMap> = (code) =>
-    loader.loadAsync(code),
+  loadMap: (systemCode: SystemCode) => Promise<CompiledMap> = (code) => loader.loadAsync(code),
 ): Promise<DetectionResult[]> {
   const candidates: DetectionResult[] = []
   const filter = opts.mapPattern ? globToRegExp(opts.mapPattern) : null

@@ -15,7 +15,6 @@ const UKR = "bgnpcgn-ukr-Cyrl-Latn-2019"
 const RUS = "bgnpcgn-rus-Cyrl-Latn-1947"
 const fromDisk = filesystemStrategy(MAPS_DIR)
 
-
 describe("catalogue-driven detection", () => {
   it("ranks a caller-supplied candidate set", () => {
     reset()

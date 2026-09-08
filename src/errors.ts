@@ -18,10 +18,7 @@ export class InterscriptError extends Error {
 
 export class MapNotFoundError extends InterscriptError {
   readonly systemCode: string
-  constructor(
-    systemCode: string,
-    options?: { asyncLoadersConfigured?: boolean },
-  ) {
+  constructor(systemCode: string, options?: { asyncLoadersConfigured?: boolean }) {
     const hint = options?.asyncLoadersConfigured
       ? " (async loaders configured — use loadMapAsync/transliterateAsync)"
       : ""
