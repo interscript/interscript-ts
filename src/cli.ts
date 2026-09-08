@@ -306,6 +306,7 @@ Commands:
   batch <systemCode> <inputFile> [--csv] [-o FILE] Bulk process many lines (alias: b)
   list [--authority X] [--source-script X]         List available systems (alias: l)
   detect <input> <output>                          Find best-matching system (alias: d)
+  ml <modelId> [-i FILE] [-o FILE]                  Neural layer: vocalize/diacritize (alias: m)
 
 Global options:
   --maps-dir <dir>    Directory of <systemCode>.json IR files
@@ -326,7 +327,47 @@ Examples:
   interscript-ts b bgnpcgn-ukr-Cyrl-Latn-2019 names.txt --csv > out.csv
   interscript-ts l --authority bgnpcgn --source-script Cyrl
   interscript-ts d "Антон" "Anton" --maps-dir ./ir
+  echo "السلام عليكم" | interscript-ts m ara-diac-layerdrop-1.0-int4
 `)
+}
+
+async function cmdMl(args: string[], _opts: GlobalOpts): Promise<number> {
+  const { values, positionals } = parseArgs({
+    args,
+    options: {
+      input: { type: "string", short: "i" },
+      output: { type: "string", short: "o" },
+      index: { type: "string" },
+    },
+    allowPositionals: true,
+    strict: true,
+  })
+  const modelId = positionals[0]
+  if (!modelId) {
+    process.stderr.write("Error: modelId is required as the first positional arg\n")
+    return 1
+  }
+  const text = values.input
+    ? readFileSync(resolve(process.cwd(), values.input), "utf8")
+    : readStdin()
+  try {
+    const { imf } = await import("./ml/index.js")
+    const resolved = values.index
+      ? await imf.resolve(modelId, values.index)
+      : await imf.resolve(modelId)
+    const model = await imf.IMFModel.fromZipBytes(resolved.bytes)
+    const input = /[\u0600-\u06FF]/.test(text) ? imf.normalizeArabicInput(text) : text
+    const out = await model.translate(input, Math.max(256, 4 * input.length))
+    if (values.output) {
+      writeFileSync(resolve(process.cwd(), values.output), out + "\n")
+    } else {
+      process.stdout.write(out + "\n")
+    }
+    return 0
+  } catch (e) {
+    process.stderr.write(`Error: ${(e as Error).message}\n`)
+    return 1
+  }
 }
 
 async function main(): Promise<void> {
@@ -344,6 +385,7 @@ async function main(): Promise<void> {
     b: "batch",
     l: "list",
     d: "detect",
+    m: "ml",
   }
   const cmd = aliasMap[command] ?? command
 
@@ -360,6 +402,9 @@ async function main(): Promise<void> {
       break
     case "detect":
       exit = await cmdDetect(rest, opts)
+      break
+    case "ml":
+      exit = await cmdMl(rest, opts)
       break
     default:
       process.stderr.write(`Unknown command: ${command}\n\n`)
