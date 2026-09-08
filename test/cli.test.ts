@@ -108,3 +108,16 @@ describe("CLI", () => {
     expect(r.stderr).toContain("not found")
   })
 })
+
+describe("CLI ml", () => {
+  it("rejects unknown model ids with the resolver's message", () => {
+    const r = runCli(["ml", "nope-9.9"], "hello")
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain("unknown model id")
+  })
+
+  it("help mentions the ml command", () => {
+    const r = runCli(["--help"])
+    expect(r.stdout).toContain("ml <modelId>")
+  })
+})
