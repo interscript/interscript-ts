@@ -1,4 +1,4 @@
-# 07 — Actionable sync-miss error (P1)
+# [COMPLETE 2026-09-08 (PR #68 merged)] 07 — Actionable sync-miss error (P1)
 
 ## Goal
 When a sync `load()`/`transliterate()` misses but the configured

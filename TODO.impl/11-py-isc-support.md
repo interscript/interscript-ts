@@ -1,4 +1,4 @@
-# 11 — interscript-py ISC support (P1)
+# [COMPLETE 2026-09-08 (PR #5 merged)] 11 — interscript-py ISC support (P1)
 
 ## Goal
 The Python map runtime reads the ISC corpus — the only map format the
