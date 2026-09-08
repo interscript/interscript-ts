@@ -18,6 +18,12 @@ repo, one verifies the API).
 | 03 | [Worker-mode guarantee](03-worker-mode-guarantee.md) | P2 | interscript.github.io |
 | 04 | [Playground ambient types](04-playground-ambient-types.md) | P2 | interscript-ts |
 | 05 | [API server-mode CORS](05-api-server-mode-cors.md) | P3 | verify live; fix in api if broken |
+| 06 | [Catalogue-driven detection](06-catalogue-detection.md) | P1 | interscript-ts |
+| 07 | [Actionable sync-miss error](07-sync-miss-hint.md) | P1 | interscript-ts |
+| 08 | [/ml CDN session probe](08-ml-cdn-session-probe.md) | P2 | probe + docs |
+| 09 | [Cross-runtime example parity](09-cross-runtime-parity.md) | P2 | ruby done; py via 11 |
+| 10 | [README quickstart wiring](10-readme-quickstart.md) | P3 | interscript-ts |
+| 11 | [interscript-py ISC support](11-py-isc-support.md) | P1 | the dark runtime |
 
 Standing rules (unchanged from the campaign): every claim measured
 before it ships; staged sets verified before every commit; no

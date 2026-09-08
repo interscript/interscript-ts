@@ -53,10 +53,16 @@ export class MapLoader {
       return known
     }
 
+    let sawAsyncStrategy = false
     for (const strategy of this.strategies) {
       const result = strategy(systemCode)
-      // Promise results can't be handled synchronously — skip.
-      if (result && typeof (result as Promise<CompiledMap>).then !== "function") {
+      // Promise results can't be handled synchronously — skip, but
+      // remember: the async API could still load this map.
+      if (result && typeof (result as Promise<CompiledMap>).then === "function") {
+        sawAsyncStrategy = true
+        continue
+      }
+      if (result) {
         const map = result as CompiledMap
         this.cache.set(systemCode, map)
         this.known.set(systemCode, map)
@@ -64,7 +70,7 @@ export class MapLoader {
         return map
       }
     }
-    throw new MapNotFoundError(systemCode)
+    throw new MapNotFoundError(systemCode, { asyncLoadersConfigured: sawAsyncStrategy })
   }
 
   /**

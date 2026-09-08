@@ -20,7 +20,7 @@ import {
   MapNotFoundError,
   SystemConversionError,
 } from "./errors.js"
-import { detectInMaps } from "./detector.js"
+import { detectInMaps, detectInMapsAsync } from "./detector.js"
 
 export {
   InterscriptError,
@@ -209,6 +209,18 @@ class InterscriptRuntime {
   ): DetectionResult[] {
     return detectInMaps(input, output, this.loader, opts, knownMaps)
   }
+
+  /** Async detection — loads candidates through `loadMapAsync`. */
+  async detectAsync(
+    input: string,
+    output: string,
+    opts: DetectOptions = {},
+  ): Promise<DetectionResult[]> {
+    // The runtime's dep-aware loader, so maps with dependencies load whole.
+    return detectInMapsAsync(input, output, this.loader, opts, (code) =>
+      this.loadMapAsync(code),
+    )
+  }
 }
 
 let defaultRuntime: InterscriptRuntime | undefined
@@ -255,6 +267,19 @@ export function loadMapAsync(systemCode: SystemCode): Promise<CompiledMap> {
 /** Public API — mirrors Interscript.detect. */
 export function detect(input: string, output: string, opts?: DetectOptions): DetectionResult[] {
   return runtime().detect(input, output, opts)
+}
+
+/**
+ * Public API — async detection over a candidate catalogue. Loads each
+ * candidate (`opts.systems`, else everything ever loaded) through the
+ * async strategies, so ISC/HTTP-backed catalogues need no preloading.
+ */
+export function detectAsync(
+  input: string,
+  output: string,
+  opts?: DetectOptions,
+): Promise<DetectionResult[]> {
+  return runtime().detectAsync(input, output, opts)
 }
 
 /** Reset the default runtime (mainly for tests). */

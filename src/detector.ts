@@ -7,9 +7,9 @@
  * Levenshtein distance to `output`, return ranked candidates.
  */
 
-import type { DetectionResult, DetectOptions, SystemCode } from "./types.js"
+import type { CompiledMap, DetectionResult, DetectOptions, SystemCode } from "./types.js"
 import type { MapLoader } from "./loader.js"
-import { executeStage } from "./runtime/interpreter.js"
+import { executeStage, executeStageAsync } from "./runtime/interpreter.js"
 import { InterscriptError } from "./errors.js"
 
 /**
@@ -60,7 +60,7 @@ export function detectInMaps(
 ): DetectionResult[] {
   const candidates: DetectionResult[] = []
   const filter = opts.mapPattern ? globToRegExp(opts.mapPattern) : null
-  const systems = knownMaps ?? loader.loadedMaps()
+  const systems = knownMaps ?? opts.systems ?? loader.loadedMaps()
 
   for (const systemCode of systems) {
     if (filter && !filter.test(systemCode)) continue
@@ -69,6 +69,44 @@ export function detectInMaps(
     try {
       const map = loader.load(systemCode)
       transliterated = executeStage(map, "main", input, loader)
+    } catch (e) {
+      if (e instanceof InterscriptError) continue
+      throw e
+    }
+    candidates.push({
+      mapName: systemCode,
+      distance: levenshtein(transliterated, output),
+    })
+  }
+
+  return candidates.sort((a, b) => a.distance - b.distance)
+}
+
+/**
+ * Async detection: loads each candidate through `loadMapAsync` before
+ * ranking it, so ISC/HTTP-backed catalogues work without preloading.
+ * Candidates that fail to load are skipped — the same semantics the
+ * sync form applies to non-executable candidates.
+ */
+export async function detectInMapsAsync(
+  input: string,
+  output: string,
+  loader: MapLoader,
+  opts: DetectOptions = {},
+  loadMap: (systemCode: SystemCode) => Promise<CompiledMap> = (code) =>
+    loader.loadAsync(code),
+): Promise<DetectionResult[]> {
+  const candidates: DetectionResult[] = []
+  const filter = opts.mapPattern ? globToRegExp(opts.mapPattern) : null
+  const systems = opts.systems ?? loader.loadedMaps()
+
+  for (const systemCode of systems) {
+    if (filter && !filter.test(systemCode)) continue
+
+    let transliterated: string
+    try {
+      const map = await loadMap(systemCode)
+      transliterated = await executeStageAsync(map, "main", input, loader)
     } catch (e) {
       if (e instanceof InterscriptError) continue
       throw e
