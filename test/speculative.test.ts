@@ -67,29 +67,27 @@ const e2e = process.env["SECRYST_SPEC_E2E"] === "1"
 describe.skipIf(!e2e)("real drafter/verifier pair (ara layerdrop-int4 -> small-2.1-int8)", () => {
   const cache = join(homedir(), ".cache", "secryst", "models")
   const drafterZip =
-    process.env["SECRYST_DRAFTER_ZIP"] ?? join(cache, "ara-diac-layerdrop-1.0-int4", "ara-diac-layerdrop-1.0-int4.zip")
+    process.env["SECRYST_DRAFTER_ZIP"] ??
+    join(cache, "ara-diac-layerdrop-1.0-int4", "ara-diac-layerdrop-1.0-int4.zip")
   const verifierZip =
-    process.env["SECRYST_VERIFIER_ZIP"] ?? join(cache, "ara-diac-small-2.1-int8", "ara-diac-small-2.1-int8.zip")
+    process.env["SECRYST_VERIFIER_ZIP"] ??
+    join(cache, "ara-diac-small-2.1-int8", "ara-diac-small-2.1-int8.zip")
 
-  it(
-    "matches the verifier's plain-path greedy on a real row",
-    async () => {
-      const drafter = await IMFModel.load(drafterZip)
-      const verifier = await IMFModel.load(verifierZip)
-      const spec = new SpeculativeModel(drafter, verifier)
-      const row = "السلام عليكم"
-      const out = await spec.translate(row, 256)
-      const stats = spec.stats()!
-      expect(stats.accepted / stats.drafted).toBeGreaterThan(0.9)
-      // verifier decides every token: output equals its own plain-path
-      // greedy (translate uses the KV path; near-tie divergence within
-      // the quantized quality contract is tolerated by comparing
-      // prefix overlap, not bytes)
-      const reference = await verifier.translate(row, 256)
-      expect(out.length).toBeGreaterThan(0.5 * reference.length)
-      await drafter.dispose()
-      await verifier.dispose()
-    },
-    300_000,
-  )
+  it("matches the verifier's plain-path greedy on a real row", async () => {
+    const drafter = await IMFModel.load(drafterZip)
+    const verifier = await IMFModel.load(verifierZip)
+    const spec = new SpeculativeModel(drafter, verifier)
+    const row = "السلام عليكم"
+    const out = await spec.translate(row, 256)
+    const stats = spec.stats()!
+    expect(stats.accepted / stats.drafted).toBeGreaterThan(0.9)
+    // verifier decides every token: output equals its own plain-path
+    // greedy (translate uses the KV path; near-tie divergence within
+    // the quantized quality contract is tolerated by comparing
+    // prefix overlap, not bytes)
+    const reference = await verifier.translate(row, 256)
+    expect(out.length).toBeGreaterThan(0.5 * reference.length)
+    await drafter.dispose()
+    await verifier.dispose()
+  }, 300_000)
 })

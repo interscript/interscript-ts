@@ -31,7 +31,10 @@ export interface SpeculativeStats {
 /** The acceptance rule: how many leading draft tokens the verdicts
  * confirm, and the verifier's pick at the first divergence (null when
  * the whole block is accepted). */
-export function acceptBlock(verdicts: readonly number[], block: readonly number[]): {
+export function acceptBlock(
+  verdicts: readonly number[],
+  block: readonly number[],
+): {
   accepted: number
   correction: number | null
 } {
@@ -87,11 +90,7 @@ export class SpeculativeModel {
       if (block.length === 0) break
       run.blocks += 1
       run.drafted += block.length
-      const { verdicts, gaps, next } = await this.verifier.review(
-        verifierHidden,
-        seq,
-        block,
-      )
+      const { verdicts, gaps, next } = await this.verifier.review(verifierHidden, seq, block)
       const { accepted, correction } = acceptBlock(verdicts, block)
       run.accepted += accepted
 
