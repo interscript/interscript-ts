@@ -1,6 +1,12 @@
 /** @interscript/ml — the IMF v1 runtime for TypeScript. */
 
-export { IMFModel } from "./model.js"
+export { IMFModel, type DecodeOptions } from "./model.js"
+export {
+  SpeculativeModel,
+  acceptBlock,
+  type SpeculativeOptions,
+  type SpeculativeStats,
+} from "./speculative.js"
 export { IMFError, parseManifest, verifyAndRead, type IMFManifest } from "./loader.js"
 export {
   resolve,

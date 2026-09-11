@@ -73,15 +73,118 @@ export class IMFModel {
   }
 
   async translate(text: string, maxLen = 256, opts: DecodeOptions = {}): Promise<string> {
-    // models train on stripped input: normalize by default (TODO.client-work 02)
-    const normalized = opts.raw === true ? text : normalizeArabicInput(text)
-    const ids = encode(normalized)
-    if (ids.length === 1) return ""
-    const hidden = await this.runEncoder(ids)
+    const hidden = await this.encode(text, opts)
+    if (!hidden) return ""
     const tokens = this.kv
       ? await this.greedyKv(hidden, maxLen, opts)
       : await this.greedyPlain(hidden, maxLen, opts)
     return decode(tokens)
+  }
+
+  /** Normalized text -> encoder hidden states; null when the input
+   * carries no decodable content. Shared entry for composition
+   * strategies (e.g. speculative decode). */
+  async encode(text: string, opts: DecodeOptions = {}): Promise<Tensor | null> {
+    const normalized = opts.raw === true ? text : normalizeArabicInput(text)
+    const ids = encode(normalized)
+    if (ids.length === 1) return null
+    return this.runEncoder(ids)
+  }
+
+  /** Greedy continuation of `k` tokens conditioned on `prefix` (the
+   * verifier-authoritative output so far). A trailing EOS is included
+   * so callers can verify the stop decision. */
+  async draft(hidden: Tensor, prefix: readonly number[], k: number): Promise<number[]> {
+    if (this.kv) {
+      const out: number[] = []
+      let current = [PAD_ID, ...prefix]
+      let present: ReadonlyMap<string, Tensor> | undefined
+      while (out.length < k) {
+        const outputs = await this.decoder.run({
+          input_ids: {
+            name: "input_ids",
+            type: "int64",
+            data: new BigInt64Array(current.map((n) => BigInt(n))),
+            dims: [1, current.length],
+          },
+          encoder_hidden_states: {
+            name: "encoder_hidden_states",
+            type: hidden.type,
+            data: hidden.data,
+            dims: hidden.dims,
+          },
+          ...this.pastTensors(present),
+        })
+        const { token } = this.argmaxLastStep(outputs["logits"]!)
+        out.push(token)
+        if (token === EOS_ID) break
+        present = new Map(
+          this.pasts.map((spec) => [spec.name, outputs[spec.name.replace("past_", "present_")]!]),
+        )
+        current = [token]
+      }
+      return out
+    }
+    const out: number[] = []
+    let feed = [PAD_ID, ...prefix]
+    while (out.length < k) {
+      const outputs = await this.decoder.run({
+        input_ids: {
+          name: "input_ids",
+          type: "int64",
+          data: new BigInt64Array(feed.map((n) => BigInt(n))),
+          dims: [1, feed.length],
+        },
+        encoder_hidden_states: {
+          name: "encoder_hidden_states",
+          type: hidden.type,
+          data: hidden.data,
+          dims: hidden.dims,
+        },
+      })
+      const { token } = this.argmaxLastStep(outputs["logits"]!)
+      out.push(token)
+      if (token === EOS_ID) break
+      feed = [...feed, token]
+    }
+    return out
+  }
+
+  /** Argmax verdict over a candidate continuation: one full-sequence
+   * run decides, for each block position, what THIS model would emit
+   * there, plus the token after the block. The single source of
+   * "verifier decision" for speculative decode. */
+  async review(
+    hidden: Tensor,
+    prefix: readonly number[],
+    block: readonly number[],
+  ): Promise<{ verdicts: number[]; gaps: number[]; next: number }> {
+    const feed = [PAD_ID, ...prefix, ...block]
+    const outputs = await this.decoder.run({
+      input_ids: {
+        name: "input_ids",
+        type: "int64",
+        data: new BigInt64Array(feed.map((n) => BigInt(n))),
+        dims: [1, feed.length],
+      },
+      encoder_hidden_states: {
+        name: "encoder_hidden_states",
+        type: hidden.type,
+        data: hidden.data,
+        dims: hidden.dims,
+      },
+      ...this.pastTensors(undefined),
+    })
+    const logits = outputs["logits"]!
+    const verdicts: number[] = []
+    const gaps: number[] = []
+    for (let i = 0; i < block.length; i++) {
+      const { token, gap } = this.argmaxAt(logits, prefix.length + i)
+      verdicts.push(token)
+      gaps.push(gap)
+    }
+    const after = this.argmaxAt(logits, prefix.length + block.length)
+    return { verdicts, gaps, next: after.token }
   }
 
   async dispose(): Promise<void> {
@@ -136,10 +239,16 @@ export class IMFModel {
   }
 
   private argmaxLastStep(logits: Tensor): { token: number; gap: number } {
+    return this.argmaxAt(logits, logits.dims[logits.dims.length - 2]! - 1)
+  }
+
+  /** Argmax and top1-top2 gap at a sequence position of the logits
+   * tensor [batch, seq, classes]. */
+  private argmaxAt(logits: Tensor, position: number): { token: number; gap: number } {
     const dims = logits.dims
     const classes = dims[dims.length - 1]!
     const data = logits.data as Float32Array | BigInt64Array
-    const base = (dims[dims.length - 2]! - 1) * classes
+    const base = position * classes
     let best = 0
     let bestVal = -Infinity
     let secondVal = -Infinity
