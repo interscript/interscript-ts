@@ -23,6 +23,23 @@ interface MetadataSession extends InferenceSession {
   readonly inputMetadata?: readonly InputMeta[]
 }
 
+export interface DecodeCursor {
+  /** The model's greedy prediction for the token after everything it
+   * has consumed. Valid after seed() or feed(); invalidated by
+   * rewindToLen() until the next feed. */
+  readonly pending: number
+  /** Consumed token count ([PAD] counts as the first). */
+  readonly length: number
+  /** Consume [PAD]; returns the first pending prediction. */
+  seed(): Promise<number>
+  /** Consume tokens; returns the argmax after each fed position and
+   * updates pending to the prediction after the last. */
+  feed(tokens: readonly number[]): Promise<number[]>
+  /** Truncate consumption to n tokens (1 = [PAD] only). The caller
+   * must feed again before reading pending. */
+  rewindToLen(n: number): void
+}
+
 export interface DecodeOptions {
   /** skip input normalization (raw text) */
   readonly raw?: boolean
@@ -91,49 +108,26 @@ export class IMFModel {
     return this.runEncoder(ids)
   }
 
-  /** Greedy continuation of `k` tokens conditioned on `prefix` (the
-   * verifier-authoritative output so far). A trailing EOS is included
-   * so callers can verify the stop decision. */
-  async draft(hidden: Tensor, prefix: readonly number[], k: number): Promise<number[]> {
-    if (this.kv) {
-      const out: number[] = []
-      let current = [PAD_ID, ...prefix]
-      let present: ReadonlyMap<string, Tensor> | undefined
-      while (out.length < k) {
-        const outputs = await this.decoder.run({
-          input_ids: {
-            name: "input_ids",
-            type: "int64",
-            data: new BigInt64Array(current.map((n) => BigInt(n))),
-            dims: [1, current.length],
-          },
-          encoder_hidden_states: {
-            name: "encoder_hidden_states",
-            type: hidden.type,
-            data: hidden.data,
-            dims: hidden.dims,
-          },
-          ...this.pastTensors(present),
-        })
-        const { token } = this.argmaxLastStep(outputs["logits"]!)
-        out.push(token)
-        if (token === EOS_ID) break
-        present = new Map(
-          this.pasts.map((spec) => [spec.name, outputs[spec.name.replace("past_", "present_")]!]),
-        )
-        current = [token]
-      }
-      return out
-    }
-    const out: number[] = []
-    let feed = [PAD_ID, ...prefix]
-    while (out.length < k) {
-      const outputs = await this.decoder.run({
+  /** A greedy decode cursor over this model: consumes tokens once,
+   * carries its KV cache across calls (plain-graph models recompute),
+   * and exposes what the model predicts after everything consumed.
+   * The substrate for speculative decode — one incremental run per
+   * block, O(T) total, instead of re-prefilling per call. */
+  cursor(hidden: Tensor): DecodeCursor {
+    const model = this
+    const run = async (
+      tokens: readonly number[],
+    ): Promise<{
+      argmaxes: number[]
+      presents: ReadonlyMap<string, Tensor>
+      logits: Tensor
+    }> => {
+      const outputs = await model.decoder.run({
         input_ids: {
           name: "input_ids",
           type: "int64",
-          data: new BigInt64Array(feed.map((n) => BigInt(n))),
-          dims: [1, feed.length],
+          data: new BigInt64Array(tokens.map((n) => BigInt(n))),
+          dims: [1, tokens.length],
         },
         encoder_hidden_states: {
           name: "encoder_hidden_states",
@@ -141,50 +135,86 @@ export class IMFModel {
           data: hidden.data,
           dims: hidden.dims,
         },
+        ...model.pastTensors(model.kv ? present : undefined),
       })
-      const { token } = this.argmaxLastStep(outputs["logits"]!)
-      out.push(token)
-      if (token === EOS_ID) break
-      feed = [...feed, token]
+      const logits = outputs["logits"]!
+      const argmaxes = tokens.map((_, i) => model.argmaxAt(logits, i).token)
+      const presents = model.kv
+        ? new Map(
+            model.pasts.map((spec) => [
+              spec.name,
+              outputs[spec.name.replace("past_", "present_")]!,
+            ]),
+          )
+        : new Map()
+      return { argmaxes, presents, logits }
     }
-    return out
-  }
 
-  /** Argmax verdict over a candidate continuation: one full-sequence
-   * run decides, for each block position, what THIS model would emit
-   * there, plus the token after the block. The single source of
-   * "verifier decision" for speculative decode. */
-  async review(
-    hidden: Tensor,
-    prefix: readonly number[],
-    block: readonly number[],
-  ): Promise<{ verdicts: number[]; gaps: number[]; next: number }> {
-    const feed = [PAD_ID, ...prefix, ...block]
-    const outputs = await this.decoder.run({
-      input_ids: {
-        name: "input_ids",
-        type: "int64",
-        data: new BigInt64Array(feed.map((n) => BigInt(n))),
-        dims: [1, feed.length],
-      },
-      encoder_hidden_states: {
-        name: "encoder_hidden_states",
-        type: hidden.type,
-        data: hidden.data,
-        dims: hidden.dims,
-      },
-      ...this.pastTensors(undefined),
-    })
-    const logits = outputs["logits"]!
-    const verdicts: number[] = []
-    const gaps: number[] = []
-    for (let i = 0; i < block.length; i++) {
-      const { token, gap } = this.argmaxAt(logits, prefix.length + i)
-      verdicts.push(token)
-      gaps.push(gap)
+    // consumed = tokens the cursor has fed ([PAD] first); KV presents
+    // always cover exactly `consumed` positions
+    let consumed = 0
+    let pending = -1 // valid after seed(), invalidated by rewind
+    let present: ReadonlyMap<string, Tensor> | undefined
+    let plainSeq: number[] = []
+
+    const slicePresent = (n: number): ReadonlyMap<string, Tensor> => {
+      const out = new Map<string, Tensor>()
+      for (const [name, t] of present ?? []) {
+        const [b, heads, seq, d] = t.dims
+        // layout [1, H, S, D]: the first n steps of EACH head are not a
+        // contiguous prefix — copy per head into a fresh buffer. IMF v1
+        // pasts are float32 (every shipped zip).
+        const src = t.data as Float32Array
+        const Ctor = src.constructor as new (len: number) => Float32Array
+        const sliced = new Ctor(heads! * n * d!)
+        const stride = seq! * d!
+        for (let h = 0; h < heads!; h++) {
+          sliced.set(src.subarray(h * stride, h * stride + n * d!), h * n * d!)
+        }
+        out.set(name, { name, type: t.type, data: sliced, dims: [b!, heads!, n, d!] })
+      }
+      return out
     }
-    const after = this.argmaxAt(logits, prefix.length + block.length)
-    return { verdicts, gaps, next: after.token }
+
+    return {
+      get pending() {
+        return pending
+      },
+      get length() {
+        return consumed
+      },
+      async seed(): Promise<number> {
+        const r = await run([PAD_ID])
+        consumed = 1
+        plainSeq = [PAD_ID]
+        pending = r.argmaxes[0]!
+        return pending
+      },
+      async feed(tokens: readonly number[]): Promise<number[]> {
+        if (model.kv) {
+          const r = await run(tokens)
+          consumed += tokens.length
+          present = r.presents
+          pending = r.argmaxes[r.argmaxes.length - 1]!
+          return r.argmaxes
+        }
+        // plain graphs have no pasts: recompute the full sequence and
+        // read the argmax after each newly fed position
+        const base = plainSeq.length
+        plainSeq = [...plainSeq, ...tokens]
+        const r = await run(plainSeq)
+        consumed = plainSeq.length
+        const out = tokens.map((_, i) => model.argmaxAt(r.logits, base + i).token)
+        pending = model.argmaxAt(r.logits, plainSeq.length - 1).token
+        return out
+      },
+      rewindToLen(n: number): void {
+        if (model.kv) present = slicePresent(n)
+        else plainSeq = plainSeq.slice(0, n)
+        consumed = n
+        pending = -1
+      },
+    }
   }
 
   async dispose(): Promise<void> {
