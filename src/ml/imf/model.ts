@@ -114,7 +114,13 @@ export class IMFModel {
    * The substrate for speculative decode — one incremental run per
    * block, O(T) total, instead of re-prefilling per call. */
   cursor(hidden: Tensor): DecodeCursor {
-    const model = this
+    // property captures, not a `this` alias: the closures below keep
+    // the enclosing method's receiver without tripping no-this-alias
+    const { decoder, kv } = this
+    const argmaxAt = (logits: Tensor, position: number) => this.argmaxAt(logits, position)
+    const pastTensors = (present: ReadonlyMap<string, Tensor> | undefined) =>
+      this.pastTensors(kv ? present : undefined)
+    const pastSpecs = this.pasts
     const run = async (
       tokens: readonly number[],
     ): Promise<{
@@ -122,7 +128,7 @@ export class IMFModel {
       presents: ReadonlyMap<string, Tensor>
       logits: Tensor
     }> => {
-      const outputs = await model.decoder.run({
+      const outputs = await decoder.run({
         input_ids: {
           name: "input_ids",
           type: "int64",
@@ -135,16 +141,13 @@ export class IMFModel {
           data: hidden.data,
           dims: hidden.dims,
         },
-        ...model.pastTensors(model.kv ? present : undefined),
+        ...pastTensors(present),
       })
       const logits = outputs["logits"]!
-      const argmaxes = tokens.map((_, i) => model.argmaxAt(logits, i).token)
-      const presents = model.kv
+      const argmaxes = tokens.map((_, i) => argmaxAt(logits, i).token)
+      const presents = kv
         ? new Map(
-            model.pasts.map((spec) => [
-              spec.name,
-              outputs[spec.name.replace("past_", "present_")]!,
-            ]),
+            pastSpecs.map((spec) => [spec.name, outputs[spec.name.replace("past_", "present_")]!]),
           )
         : new Map()
       return { argmaxes, presents, logits }
@@ -191,7 +194,7 @@ export class IMFModel {
         return pending
       },
       async feed(tokens: readonly number[]): Promise<number[]> {
-        if (model.kv) {
+        if (kv) {
           const r = await run(tokens)
           consumed += tokens.length
           present = r.presents
@@ -204,12 +207,12 @@ export class IMFModel {
         plainSeq = [...plainSeq, ...tokens]
         const r = await run(plainSeq)
         consumed = plainSeq.length
-        const out = tokens.map((_, i) => model.argmaxAt(r.logits, base + i).token)
-        pending = model.argmaxAt(r.logits, plainSeq.length - 1).token
+        const out = tokens.map((_, i) => argmaxAt(r.logits, base + i).token)
+        pending = argmaxAt(r.logits, plainSeq.length - 1).token
         return out
       },
       rewindToLen(n: number): void {
-        if (model.kv) present = slicePresent(n)
+        if (kv) present = slicePresent(n)
         else plainSeq = plainSeq.slice(0, n)
         consumed = n
         pending = -1

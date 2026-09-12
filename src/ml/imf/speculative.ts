@@ -121,14 +121,8 @@ export class SpeculativeModel {
     const run: RunStats = { blocks: 0, drafted: 0, accepted: 0, bonus: 0 }
 
     while (seq.length < maxLen) {
-      const { block, pending } = await this.draftBlock(
-        draftCursor,
-        pendingDraft,
-        seq.length,
-        maxLen,
-      )
+      const block = await this.draftBlock(draftCursor, pendingDraft, seq.length, maxLen)
       if (block.length === 0) break
-      pendingDraft = pending
       run.blocks += 1
       run.drafted += block.length
 
@@ -178,21 +172,22 @@ export class SpeculativeModel {
   }
 
   /** Draft up to blockSize tokens greedily from the cursor; a
-   * trailing EOS is included but not fed. Returns the block and the
-   * drafter's pending prediction after it. */
+   * trailing EOS is included but not fed. The drafter's next pending
+   * prediction lives in the cursor — callers re-derive it after every
+   * verifier decision (correction or bonus), never from the block. */
   private async draftBlock(
     cursor: DecodeCursor,
     pending: number,
     seqLen: number,
     maxLen: number,
-  ): Promise<{ block: number[]; pending: number }> {
+  ): Promise<number[]> {
     const block: number[] = []
     let token = pending
     while (block.length < this.blockSize && seqLen + block.length < maxLen) {
       block.push(token)
-      if (token === EOS_ID) return { block, pending: token }
+      if (token === EOS_ID) return block
       token = (await cursor.feed([token]))[0]!
     }
-    return { block, pending: token }
+    return block
   }
 }
