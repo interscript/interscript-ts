@@ -1,6 +1,7 @@
 /** @interscript/ml — the IMF v1 runtime for TypeScript. */
 
 export { IMFModel, type DecodeOptions } from "./model.js"
+export { ngramAddresses, DEFAULT_ORDERS } from "./engram.js"
 export {
   SpeculativeModel,
   acceptBlock,
