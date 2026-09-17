@@ -12,6 +12,7 @@ import { verifyAndRead, parseManifest, type IMFManifest } from "./loader.js"
 import { resolve } from "./registry.js"
 import { normalizeArabicInput, repetitionGuardCut } from "./guards.js"
 import { EOS_ID, PAD_ID, decode, encode } from "./tokens.js"
+import { translateWindowed } from "./windows.js"
 
 interface InputMeta {
   readonly name: string
@@ -90,6 +91,12 @@ export class IMFModel {
   }
 
   async translate(text: string, maxLen = 256, opts: DecodeOptions = {}): Promise<string> {
+    // long inputs are out-of-distribution: split at the training
+    // budget (single-window inputs pass straight through)
+    return translateWindowed(this, text, maxLen, opts)
+  }
+
+  async translateDirect(text: string, maxLen = 256, opts: DecodeOptions = {}): Promise<string> {
     const hidden = await this.encode(text, opts)
     if (!hidden) return ""
     const tokens = this.kv
