@@ -31,6 +31,7 @@
 import { normalizeArabicInput, repetitionGuardCut } from "./guards.js"
 import { EOS_ID, decode, encode } from "./tokens.js"
 import type { IMFModel, DecodeOptions, DecodeCursor } from "./model.js"
+import { translateWindowed } from "./windows.js"
 
 export interface SpeculativeOptions {
   /** draft tokens per verifier pass (default 8) */
@@ -105,6 +106,10 @@ export class SpeculativeModel {
   }
 
   async translate(text: string, maxLen = 256, opts: DecodeOptions = {}): Promise<string> {
+    return translateWindowed(this, text, maxLen, opts)
+  }
+
+  async translateDirect(text: string, maxLen = 256, opts: DecodeOptions = {}): Promise<string> {
     const normalized = opts.raw === true ? text : normalizeArabicInput(text)
     this.lastNormalized = normalized
     if (encode(normalized).length === 1) return ""
