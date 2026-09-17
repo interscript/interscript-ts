@@ -6,7 +6,7 @@
  */
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { splitWindows, BYTE_BUDGET } from "../src/ml/imf/windows.js"
+import { splitWindows } from "../src/ml/imf/windows.js"
 
 const fixture = JSON.parse(readFileSync("test/fixtures/windows-split.json", "utf8")) as {
   budget: number
