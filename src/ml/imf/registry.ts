@@ -256,13 +256,20 @@ export interface ResolvedZip {
 
 const RELEASE_ORIGIN = "https://github.com/interscript/interscript-models/releases/download/"
 const CORS_FRONT_DOOR = "https://api.interscript.org/v1/assets/"
+const LEGACY_RELEASE_ORIGIN =
+  "https://github.com/interscript/interscript-ml/releases/download/"
 
 /** In browsers, GH Releases are not CORS-fetchable (the github.com
  * redirect hop lacks ACAO); rewrite release URLs to the API's
  * streaming front door. Content authenticity is unaffected: the
  * sha256 verification proves whatever channel delivered the bytes. */
 export function corsAssetUrl(url: string): string {
-  return url.startsWith(RELEASE_ORIGIN) ? CORS_FRONT_DOOR + url.slice(RELEASE_ORIGIN.length) : url
+  // Older shipped runtimes pin the pre-rename repo; browser pins on
+  // those still need the front door (redirects fix the fetch, not CORS).
+  for (const origin of [RELEASE_ORIGIN, LEGACY_RELEASE_ORIGIN]) {
+    if (url.startsWith(origin)) return CORS_FRONT_DOOR + url.slice(origin.length)
+  }
+  return url
 }
 
 const CACHE_NAME = "interscript-imf-models-v1"
