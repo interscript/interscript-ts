@@ -259,9 +259,31 @@ describe("registry", () => {
   it("DEFAULT_INDEX_URL pins a GitHub Release asset, never raw", async () => {
     const { DEFAULT_INDEX_URL } = await import("../src/ml/imf/registry.js")
     expect(DEFAULT_INDEX_URL).toMatch(
-      /^https:\/\/github\.com\/interscript\/interscript-ml\/releases\/download\/index-v6\/models-index\.yaml$/,
+      /^https:\/\/github\.com\/interscript\/interscript-ml\/releases\/download\/index-v7\/models-index\.yaml$/,
     )
     expect(DEFAULT_INDEX_URL).not.toMatch(/raw\.githubusercontent/)
+  })
+
+  it("INTERSCRIPT_ML_INDEX is the primary override, SECRYST_INDEX a legacy alias", async () => {
+    const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    const { resolve } = await import("../src/ml/imf/registry.js")
+    const dir = mkdtempSync(join(tmpdir(), "imf-envvar-"))
+    writeFileSync(join(dir, "models.yaml"), "version: 1\nmodels:\n  tiny-1.0:\n    filename: t.zip\n    sha256: x\n")
+    const prev = process.env["SECRYST_INDEX"]
+    try {
+      process.env["INTERSCRIPT_ML_INDEX"] = join(dir, "models.yaml")
+      await expect(resolve("nope-9.9")).rejects.toThrow(/unknown model id/)
+      delete process.env["INTERSCRIPT_ML_INDEX"]
+      process.env["SECRYST_INDEX"] = join(dir, "models.yaml")
+      await expect(resolve("nope-9.9")).rejects.toThrow(/unknown model id/)
+    } finally {
+      delete process.env["INTERSCRIPT_ML_INDEX"]
+      if (prev === undefined) delete process.env["SECRYST_INDEX"]
+      else process.env["SECRYST_INDEX"] = prev
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it("HTTP index fetch verifies the .sha256 sidecar before parsing", async () => {
@@ -367,7 +389,7 @@ describe("registry", () => {
     expect(typeof imf!["resolve"]).toBe("function")
     expect(typeof imf!["IMFModel"]).toBe("function")
     expect(imf!["DEFAULT_INDEX_URL"]).toMatch(
-      /github\.com\/interscript\/interscript-ml\/releases\/download\/index-v6\/models-index\.yaml/,
+      /github\.com\/interscript\/interscript-ml\/releases\/download\/index-v7\/models-index\.yaml/,
     )
   })
 })
