@@ -9,14 +9,14 @@
  *
  * Node persists to ~/.cache/interscript/models/<id>/ (fs, atomic
  * rename); browsers keep the verified bytes in memory (the Cache API
- * integration is future work). Overrides: SECRYST_INDEX,
- * SECRYST_CACHE.
+ * integration is future work). Overrides: INTERSCRIPT_ML_INDEX / INTERSCRIPT_ML_CACHE
+ * (SECRYST_INDEX / SECRYST_CACHE are deprecated legacy aliases).
  */
 
 import { load as loadYaml } from "js-yaml"
 
 export const DEFAULT_INDEX_URL =
-  "https://github.com/interscript/interscript-ml/releases/download/index-v6/models-index.yaml"
+  "https://github.com/interscript/interscript-ml/releases/download/index-v7/models-index.yaml"
 
 export interface Part {
   url: string
@@ -52,7 +52,7 @@ function cacheDir(): string {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
     ?.env
   const home = env?.["HOME"] ?? env?.["USERPROFILE"] ?? "."
-  return env?.["SECRYST_CACHE"] ?? `${home}/.cache/interscript`
+  return env?.["INTERSCRIPT_ML_CACHE"] ?? env?.["SECRYST_CACHE"] ?? `${home}/.cache/interscript`
 }
 
 async function fetchHttpBytes(url: string): Promise<Uint8Array> {
@@ -297,7 +297,7 @@ export async function resolve(
 ): Promise<ResolvedZip> {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
     ?.env
-  const source = indexUrl ?? env?.["SECRYST_INDEX"] ?? DEFAULT_INDEX_URL
+  const source = indexUrl ?? env?.["INTERSCRIPT_ML_INDEX"] ?? env?.["SECRYST_INDEX"] ?? DEFAULT_INDEX_URL
   let entries: Record<string, IndexEntry>
   try {
     entries = await fetchIndex(source)
