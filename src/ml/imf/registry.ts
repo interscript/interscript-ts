@@ -16,7 +16,7 @@
 import { load as loadYaml } from "js-yaml"
 
 export const DEFAULT_INDEX_URL =
-  "https://github.com/interscript/interscript-ml/releases/download/index-v7/models-index.yaml"
+  "https://github.com/interscript/interscript-models/releases/download/index-v8/models-index.yaml"
 
 export interface Part {
   url: string
@@ -254,7 +254,7 @@ export interface ResolvedZip {
  * to the filesystem instead; both paths re-verify against the index
  * sha256 on every use — the cache is never trusted blindly. */
 
-const RELEASE_ORIGIN = "https://github.com/interscript/interscript-ml/releases/download/"
+const RELEASE_ORIGIN = "https://github.com/interscript/interscript-models/releases/download/"
 const CORS_FRONT_DOOR = "https://api.interscript.org/v1/assets/"
 
 /** In browsers, GH Releases are not CORS-fetchable (the github.com
