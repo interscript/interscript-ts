@@ -145,9 +145,9 @@ describe("CORS asset rewrite (13)", () => {
   it("rewrites canonical interscript-models release URLs too", () => {
     expect(
       corsAssetUrl(
-        "https://github.com/interscript/interscript-models/releases/download/index-v8/models-index.yaml",
+        "https://github.com/interscript/interscript-models/releases/download/index-v9/models-index.yaml",
       ),
-    ).toBe("https://api.interscript.org/v1/assets/index-v8/models-index.yaml")
+    ).toBe("https://api.interscript.org/v1/assets/index-v9/models-index.yaml")
   })
   it("leaves other hosts and schemes untouched", () => {
     expect(corsAssetUrl("https://example.com/x.zip")).toBe("https://example.com/x.zip")
