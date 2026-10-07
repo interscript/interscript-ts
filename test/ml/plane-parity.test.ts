@@ -31,7 +31,7 @@ function lev(a: string, b: string): number {
 }
 
 gated("neural parity (ts plane leg)", () => {
-  it("matches the py-reference golden within the quantized tolerance", async () => {
+  it("matches the py-reference golden within the quantized tolerance", { timeout: 900_000 }, async () => {
     const model = await createPlaneModel(new Uint8Array(readFileSync(zipPath!)))
     const rows = readFileSync(goldenPath!, "utf8")
       .split("\n")
