@@ -43,3 +43,4 @@ export * as imf from "./imf/index.js"
 // = adding a new import here. Order doesn't matter.
 import "./models/rababa/index.js"
 import "./models/secryst/index.js"
+import "./models/plane/index.js"

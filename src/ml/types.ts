@@ -8,7 +8,7 @@
  * Discriminated union of every supported model kind. Add a new variant
  * here + register a factory; nothing else changes.
  */
-export type ModelKind = "rababa" | "secryst"
+export type ModelKind = "rababa" | "secryst" | "plane"
 
 /**
  * Reference to a model the runtime can provision. Discriminated by
