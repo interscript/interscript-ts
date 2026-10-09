@@ -24,7 +24,9 @@ jobs:
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-      - run: npm ci
+      # onnxruntime-node's postinstall downloads binaries that are
+      # unnecessary for packaging; skip scripts in the release job
+      - run: npm ci --ignore-scripts
       - run: npm run lint
       - run: npm run build
       - run: npm test
