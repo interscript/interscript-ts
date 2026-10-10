@@ -30,3 +30,14 @@ export function decode(tokenIds: readonly number[]): string {
   }
   return decoder.decode(new Uint8Array(out))
 }
+
+/** Seq2seq output contract: models trained on multi-reference corpora
+ * emit '/'-separated alternates per token; the runtime returns the
+ * primary choice only. */
+export function firstAlternates(text: string): string {
+  return text
+    .split(/\s+/)
+    .filter((t) => t.length > 0)
+    .map((t) => t.split("/")[0])
+    .join(" ")
+}
