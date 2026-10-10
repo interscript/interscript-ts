@@ -11,7 +11,7 @@ import type { Tensor } from "../types.js"
 import { verifyAndRead, parseManifest, type IMFManifest } from "./loader.js"
 import { resolve } from "./registry.js"
 import { normalizeArabicInput, repetitionGuardCut } from "./guards.js"
-import { EOS_ID, PAD_ID, decode, encode } from "./tokens.js"
+import { EOS_ID, PAD_ID, decode, encode, firstAlternates } from "./tokens.js"
 import { translateWindowed } from "./windows.js"
 
 interface InputMeta {
@@ -102,7 +102,7 @@ export class IMFModel {
     const tokens = this.kv
       ? await this.greedyKv(hidden, maxLen, opts)
       : await this.greedyPlain(hidden, maxLen, opts)
-    return decode(tokens)
+    return firstAlternates(decode(tokens))
   }
 
   /** Normalized text -> encoder hidden states; null when the input
