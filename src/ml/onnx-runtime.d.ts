@@ -23,7 +23,10 @@ declare module "onnxruntime-node" {
   }
   export const Tensor: new (type: string, data: unknown, dims: readonly number[]) => OnnxTensor
   export const InferenceSession: {
-    create(modelData: ArrayBuffer | Uint8Array): Promise<OnnxSession>
+    create(
+      modelData: ArrayBuffer | Uint8Array,
+      options?: { intraOpNumThreads?: number },
+    ): Promise<OnnxSession>
   }
 }
 
