@@ -147,10 +147,12 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
 
       const megaRules: MegaregexpRule[] = sorted.map(({ rule: r }) => {
         const from = compileItem(r.from!, ctx)
-        const before = r.before ? compileItem(r.before, ctx).re : ""
-        const after = r.after ? compileItem(r.after, ctx).re : ""
-        const notBefore = r.notBefore ? compileItem(r.notBefore, ctx).re : ""
-        const notAfter = r.notAfter ? compileItem(r.notAfter, ctx).re : ""
+        // Constraints compile in CLASS context (charset aliases resolve
+        // per-character — mirrors RS materialize_class).
+        const before = r.before ? compileItem(r.before, ctx, true).re : ""
+        const after = r.after ? compileItem(r.after, ctx, true).re : ""
+        const notBefore = r.notBefore ? compileItem(r.notBefore, ctx, true).re : ""
+        const notAfter = r.notAfter ? compileItem(r.notAfter, ctx, true).re : ""
 
         const pattern = [
           before ? `(?<=${before})` : "",
@@ -192,10 +194,12 @@ function executeSubRule(rule: SubRule, ctx: ExecutionContext): void {
   // Ruby's interpreter uses Ruby gsub with capture groups, which DOES
   // consume the surrounding context and re-inserts it via backreferences.
   // We use lookarounds for correctness with multi-byte scripts.
-  const before = rule.before ? compileItem(rule.before, ctx).re : ""
-  const after = rule.after ? compileItem(rule.after, ctx).re : ""
-  const notBefore = rule.notBefore ? compileItem(rule.notBefore, ctx).re : ""
-  const notAfter = rule.notAfter ? compileItem(rule.notAfter, ctx).re : ""
+  // Constraints compile in CLASS context (charset aliases resolve
+  // per-character — mirrors RS materialize_class / convert_class_alias).
+  const before = rule.before ? compileItem(rule.before, ctx, true).re : ""
+  const after = rule.after ? compileItem(rule.after, ctx, true).re : ""
+  const notBefore = rule.notBefore ? compileItem(rule.notBefore, ctx, true).re : ""
+  const notAfter = rule.notAfter ? compileItem(rule.notAfter, ctx, true).re : ""
 
   const patternParts: string[] = []
   if (before) patternParts.push(`(?<=${before})`)
