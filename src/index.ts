@@ -66,14 +66,16 @@ export type {
   IscDocument,
   IscItem,
   IscRule,
+  IscRuleset,
   IscStage,
   IscStageItem,
   IscTest,
   IscConstraint,
 } from "./isc/types.js"
 export { parseIsc } from "./isc/parser.js"
-export { IscParseError } from "./isc/types.js"
-export { iscToCompiledMap } from "./isc/converter.js"
+export { IscParseError, IscLoadError } from "./isc/types.js"
+export { iscToCompiledMap, type IscToCompiledMapOptions } from "./isc/converter.js"
+export { expandDocument, requiredDependencyDocs, type DependencyDocResolver } from "./isc/expand.js"
 export { setRababaConfig, resetRababaConfigs, type RababaConfigEntry } from "./stdlib/ml.js"
 
 export interface InterscriptConfig {
@@ -149,12 +151,17 @@ class InterscriptRuntime {
   /**
    * Transliterate `input` using `systemCode`. Loads the map on first use,
    * caches it.
+   *
+   * `language` (ISC-WF-1 W3): selects one of the map's declared
+   * languages. When given and declared, `when`-guarded rules listing it
+   * apply and all other guarded rules are inert; when omitted (or
+   * undeclared), every guarded rule is inert.
    */
-  transliterate(systemCode: SystemCode, input: string, stage?: string): string {
+  transliterate(systemCode: SystemCode, input: string, stage?: string, language?: string): string {
     try {
       const map = this.loadMap(systemCode)
       const stageName = stage ?? this.defaultStage
-      return executeStage(map, stageName, input, this.loader)
+      return executeStage(map, stageName, input, this.loader, language)
     } catch (e) {
       if (e instanceof InterscriptError) throw e
       throw new SystemConversionError(
@@ -170,11 +177,16 @@ class InterscriptRuntime {
    * Also handles ML-powered maps (rababa, secryst) — use this instead
    * of transliterate() for any map that might contain ML funcalls.
    */
-  async transliterateAsync(systemCode: SystemCode, input: string, stage?: string): Promise<string> {
+  async transliterateAsync(
+    systemCode: SystemCode,
+    input: string,
+    stage?: string,
+    language?: string,
+  ): Promise<string> {
     try {
       const map = await this.loadMapAsync(systemCode)
       const stageName = stage ?? this.defaultStage
-      return await executeStageAsync(map, stageName, input, this.loader)
+      return await executeStageAsync(map, stageName, input, this.loader, language)
     } catch (e) {
       if (e instanceof InterscriptError) throw e
       throw new SystemConversionError(
@@ -236,8 +248,13 @@ function runtime(): InterscriptRuntime {
 }
 
 /** Public API — mirrors Interscript.transliterate from Ruby. */
-export function transliterate(systemCode: SystemCode, input: string, stage?: string): string {
-  return runtime().transliterate(systemCode, input, stage)
+export function transliterate(
+  systemCode: SystemCode,
+  input: string,
+  stage?: string,
+  language?: string,
+): string {
+  return runtime().transliterate(systemCode, input, stage, language)
 }
 
 /**
@@ -248,8 +265,9 @@ export function transliterateAsync(
   systemCode: SystemCode,
   input: string,
   stage?: string,
+  language?: string,
 ): Promise<string> {
-  return runtime().transliterateAsync(systemCode, input, stage)
+  return runtime().transliterateAsync(systemCode, input, stage, language)
 }
 
 /** Public API — mirrors Interscript.load. */

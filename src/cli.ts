@@ -116,6 +116,8 @@ async function cmdTransliterate(args: string[], opts: GlobalOpts): Promise<numbe
     options: {
       input: { type: "string", short: "i" },
       output: { type: "string", short: "o" },
+      // ISC-WF-1 W3 — select a declared language for language-conditioned maps.
+      language: { type: "string" },
     },
     allowPositionals: true,
     strict: true,
@@ -140,8 +142,8 @@ async function cmdTransliterate(args: string[], opts: GlobalOpts): Promise<numbe
         !existsSync(resolve(process.cwd(), "maps")) &&
         !existsSync(resolve(process.cwd(), "public/maps")))
     const result = useAsync
-      ? await transliterateAsync(systemCode, inputText)
-      : transliterate(systemCode, inputText)
+      ? await transliterateAsync(systemCode, inputText, undefined, values.language)
+      : transliterate(systemCode, inputText, undefined, values.language)
     if (values.output) {
       writeFileSync(resolve(process.cwd(), values.output), result + "\n")
     } else {
@@ -160,6 +162,7 @@ async function cmdBatch(args: string[], opts: GlobalOpts): Promise<number> {
     options: {
       output: { type: "string", short: "o" },
       csv: { type: "boolean", default: false },
+      language: { type: "string" },
     },
     allowPositionals: true,
     strict: true,
@@ -185,7 +188,7 @@ async function cmdBatch(args: string[], opts: GlobalOpts): Promise<number> {
   const rows: Array<{ input: string; output: string; error?: string }> = []
   for (const input of lines) {
     try {
-      const output = await transliterateAsync(systemCode, input)
+      const output = await transliterateAsync(systemCode, input, undefined, values.language)
       rows.push({ input, output })
     } catch (e) {
       rows.push({ input, output: "", error: (e as Error).message })
@@ -303,6 +306,7 @@ Usage:
 
 Commands:
   transliterate <systemCode> [-i FILE] [-o FILE]   Transliterate text (alias: t)
+      [--language <code>]                          Select a declared language (WF-1)
   batch <systemCode> <inputFile> [--csv] [-o FILE] Bulk process many lines (alias: b)
   list [--authority X] [--source-script X]         List available systems (alias: l)
   detect <input> <output>                          Find best-matching system (alias: d)

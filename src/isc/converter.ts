@@ -4,9 +4,22 @@
  *
  * This bridges the ISC parser output to the existing runtime without
  * modifying any runtime code (OCP).
+ *
+ * ISC-WF-1 (docs/isc-wf-1.md):
+ *   - W1/W2 (rulesets, use+override) resolve here at compile time via
+ *     expandDocument(). The emitted IR stays FLAT — expanded rules only,
+ *     no ruleset or use nodes survive into interscript.maps.ir.v1.
+ *   - The IR gains exactly two additive fields: optional document-level
+ *     `languages: string[]` (W3 declaration) and optional rule-level
+ *     `when: string[]` (W3 guards). Maps using none of the constructs
+ *     serialize byte-identically to the pre-WF-1 format (additivity, §1).
+ *   - W3 guard semantics (inertness, guard-applicable-wins precedence)
+ *     are RUNTIME concerns — see runtime/executor.ts.
  */
 
 import type { IscDocument, IscItem, IscRule, IscStageItem } from "./types.js"
+import { IscLoadError } from "./types.js"
+import { expandDocument, type DependencyDocResolver } from "./expand.js"
 import type {
   AliasItem,
   AnyCharClassItem,
@@ -28,34 +41,60 @@ import type {
   SubRule,
 } from "../types.js"
 
-export function iscToCompiledMap(doc: IscDocument): CompiledMapJson {
+export interface IscToCompiledMapOptions {
+  /**
+   * Resolver for dependency documents, needed when the map (or one of
+   * its dependencies) expands a ruleset across a dependency boundary
+   * (`use <alias>.<ruleset>`). Declared dependencies only.
+   */
+  readonly resolveDependency?: DependencyDocResolver
+}
+
+export function iscToCompiledMap(
+  doc: IscDocument,
+  opts: IscToCompiledMapOptions = {},
+): CompiledMapJson {
+  // W1/W2: resolve ruleset uses before converting. A no-op for maps
+  // without `use` directives (legacy corpus — additivity preserved).
+  const expanded = expandDocument(
+    doc,
+    opts.resolveDependency ? { resolveDependency: opts.resolveDependency } : {},
+  )
+
   const aliases: Record<string, Item> = {}
-  for (const a of doc.aliases) {
+  for (const a of expanded.aliases) {
     aliases[a.name] = convertItem(a.value)
   }
   // Build alias → target system code map for run-rule resolution.
   const depAliases = new Map<string, string>()
-  for (const d of doc.dependencies) {
+  for (const d of expanded.dependencies) {
     if (d.aliasName) depAliases.set(d.aliasName, d.target)
   }
   const resolveDep = (name: string): string => depAliases.get(name) ?? name
-  const stages = doc.stages.map((s) => convertStage(s, resolveDep))
+  const stages = expanded.stages.map((s) => convertStage(s, resolveDep))
 
-  if (Object.keys(doc.metadata).length === 0) {
+  const base = {
+    schemaVersion: 1 as const,
+    systemCode: expanded.systemCode,
+    dependencies: expanded.dependencies.map((d) => d.target),
+    // IR WF-1 extension: languages declared by the map (absent when the
+    // map declares none, preserving the legacy JSON shape byte-for-byte).
+    ...(expanded.languages && expanded.languages.length > 0
+      ? { languages: [...expanded.languages] }
+      : {}),
+  }
+
+  if (Object.keys(expanded.metadata).length === 0) {
     return {
-      schemaVersion: 1,
-      systemCode: doc.systemCode,
-      dependencies: doc.dependencies.map((d) => d.target),
+      ...base,
       stages,
       aliases,
       functions: {},
     }
   }
   return {
-    schemaVersion: 1,
-    systemCode: doc.systemCode,
-    dependencies: doc.dependencies.map((d) => d.target),
-    metadata: doc.metadata,
+    ...base,
+    metadata: expanded.metadata,
     stages,
     aliases,
     functions: {},
@@ -77,6 +116,12 @@ function convertStage(
 
 function convertStageItem(item: IscStageItem, resolveDep: DepResolver): Rule {
   switch (item.kind) {
+    case "use":
+      // Unreachable: expandDocument() resolves every `use` before
+      // conversion — the IR stays flat (no ruleset/use nodes).
+      throw new IscLoadError(
+        `unexpanded use "${item.dependency ? `${item.dependency}.` : ""}${item.name}" reached the converter`,
+      )
     case "parallel": {
       const r: ParallelRule = { kind: "parallel", rules: item.rules.map(convertRule) }
       return r
@@ -144,6 +189,9 @@ function convertRule(rule: IscRule): SubRule {
     ...(after !== undefined ? { after } : {}),
     ...(notBefore !== undefined ? { notBefore } : {}),
     ...(notAfter !== undefined ? { notAfter } : {}),
+    // IR WF-1 extension: language guard (absent on unguarded rules,
+    // preserving the legacy JSON shape).
+    ...(rule.when && rule.when.length > 0 ? { when: [...rule.when] } : {}),
   }
   return r
 }

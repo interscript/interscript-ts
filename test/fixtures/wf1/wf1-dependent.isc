@@ -1,0 +1,24 @@
+system "wf1-dep:tha-Thai:Latn:2026" {
+
+# ISC-WF-1 W1+W2 fixture — ruleset use across a dependency, with a
+# per-site override (child-wins on exact from-equality, §4.2).
+
+dependency "wf1-lib:tha-Thai:Latn:2026" as lib
+
+stage main {
+  use lib.leading_vowels override {
+    sub "ะ" "o"
+  }
+  parallel {
+    sub "ท" "th"
+  }
+  use lib.consonants
+}
+
+tests {
+  # kept row (ิ→i) runs, override row (ะ→o) replaces the imported ะ→a,
+  # the parallel pass then handles ท, and the trailing use expands ก→k.
+  "ะทก" -> "othk"
+}
+
+}

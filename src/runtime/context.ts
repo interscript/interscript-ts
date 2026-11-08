@@ -16,6 +16,13 @@ export class ExecutionContext {
   /** Map currently being executed. */
   readonly map: CompiledMap
 
+  /**
+   * ISC-WF-1 W3 — the language the caller selected for this run, if any.
+   * Guards apply only when the selected language is declared by the map
+   * owning the rule; otherwise every `when`-guarded rule is inert.
+   */
+  readonly selectedLanguage: string | undefined
+
   /** Optional loader — used to resolve run-rule dependencies. */
   private readonly loader: MapLoader | undefined
 
@@ -25,11 +32,12 @@ export class ExecutionContext {
   /** Function cache so repeated function calls don't re-resolve. */
   readonly functions: CompiledMap["functions"]
 
-  constructor(map: CompiledMap, initial: string, loader?: MapLoader) {
+  constructor(map: CompiledMap, initial: string, loader?: MapLoader, selectedLanguage?: string) {
     this.map = map
     this.current = initial
     this.functions = map.functions
     this.loader = loader
+    this.selectedLanguage = selectedLanguage
   }
 
   resolveAlias(name: string): Item | undefined {
@@ -57,10 +65,10 @@ export class ExecutionContext {
 
   /**
    * Spawn a new context for a different map (used by `run` rule with docName).
-   * Reuses the same loader; fresh alias cache.
+   * Reuses the same loader and language selection; fresh alias cache.
    */
   withMap(map: CompiledMap): ExecutionContext {
-    return new ExecutionContext(map, this.current, this.loader)
+    return new ExecutionContext(map, this.current, this.loader, this.selectedLanguage)
   }
 
   /**

@@ -1,0 +1,29 @@
+system "wf1-same:rus-Cyrl:Latn:2026" {
+
+# ISC-WF-1 W1 fixture — same-map rulesets, recursive expansion, and a
+# ruleset contributing a parallel block as one pass (§3.2).
+
+ruleset base {
+  sub "а" "a"
+  sub "б" "b"
+}
+
+ruleset composite {
+  use base
+  parallel {
+    sub "в" "v"
+    sub "г" "g"
+  }
+  sub "д" "d"
+}
+
+stage main {
+  use composite
+  sub "е" "e"
+}
+
+tests {
+  "абвгде" -> "abvgde"
+}
+
+}

@@ -55,6 +55,62 @@ function resolveFunction(ctx: ExecutionContext, name: string) {
   return undefined
 }
 
+// -- ISC-WF-1 W3: language guards (spec §5) --
+
+/**
+ * Effective selected language for a rule: the caller's selection, but
+ * only if the map OWNING the rule declares it. Selecting an undeclared
+ * language (or selecting none) makes every guarded rule inert.
+ */
+function selectedLanguageFor(rule: SubRule, ctx: ExecutionContext): string | undefined {
+  const sel = ctx.selectedLanguage
+  if (!sel) return undefined
+  const declared = ctx.map.languages
+  if (!declared || !declared.includes(sel)) return undefined
+  return sel
+}
+
+/**
+ * Whether a sub rule applies on this run. Unguarded rules always apply;
+ * a guarded rule applies only when its `when` list contains the
+ * (declared, selected) language.
+ */
+function ruleApplies(rule: SubRule, ctx: ExecutionContext): boolean {
+  if (!rule.when) return true
+  const sel = selectedLanguageFor(rule, ctx)
+  return sel !== undefined && rule.when.includes(sel)
+}
+
+/**
+ * Structural key of a from-item — the runtime analog of the spec's
+ * byte-exact from-string equality (§5.2 precedence). Identical rules
+ * compile to identical keys; no normalization.
+ */
+function fromItemKey(item: Item): string {
+  switch (item.kind) {
+    case "string":
+      return `s:${JSON.stringify(item.value)}`
+    case "capture_group":
+      return `g(${fromItemKey(item.data)})`
+    case "capture_ref":
+      return `c:${item.id}`
+    case "alias":
+      return `a:${item.name}${item.map ? `@${item.map}` : ""}`
+    case "any":
+      return `any(${item.of.map(fromItemKey).join(",")})`
+    case "any_char_class":
+      return item.range
+        ? `r:${item.range[0]}..${item.range[1]}`
+        : `cc:${(item.chars ?? []).join("")}`
+    case "group":
+      return `+(${item.items.map(fromItemKey).join(",")})`
+    case "repeat":
+      return `rep(${fromItemKey(item.item)},${item.min},${item.max ?? "*"})`
+    case "stage_ref":
+      return `stage:${item.name}`
+  }
+}
+
 const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
   sub: (rule, ctx) => executeSubRule(rule, ctx),
 
@@ -91,15 +147,22 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
     // mutates the string before constrained rules can compete. We must
     // take the WHOLE block down one path or the other.
 
-    const subRules: SubRule[] = []
+    const subRulesAll: SubRule[] = []
     const trailingRules: Rule[] = []
     for (const inner of rule.rules) {
       if (inner.kind === "sub" && inner.from) {
-        subRules.push(inner)
+        // W3: inert guards drop out of the pass before anything else.
+        if (ruleApplies(inner, ctx)) subRulesAll.push(inner)
       } else {
         trailingRules.push(inner)
       }
     }
+
+    // W3 precedence (§5.2): if an unguarded rule and a guard-applicable
+    // rule share the same from, the guard-applicable rule wins — the
+    // generic row drops out of the pass (no restating required).
+    const guardedKeys = new Set(subRulesAll.filter((r) => r.when).map((r) => fromItemKey(r.from!)))
+    const subRules = subRulesAll.filter((r) => r.when || !guardedKeys.has(fromItemKey(r.from!)))
 
     // A rule is tree-compatible if it has no before/after clauses AND
     // its `from` can be expanded to literal strings (no re-only aliases
@@ -187,6 +250,9 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
 }
 
 function executeSubRule(rule: SubRule, ctx: ExecutionContext): void {
+  // W3: a guarded rule whose guard is inert behaves exactly as if the
+  // rule were absent (§5.1) — applies to bare rules and sequence blocks.
+  if (!ruleApplies(rule, ctx)) return
   if (!rule.from) throw new MapLogicError("Sub rule missing 'from'")
 
   const from = compileItem(rule.from, ctx)
