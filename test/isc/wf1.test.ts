@@ -349,10 +349,31 @@ describe("expandDocument — W2 override merge", () => {
       `use rs override {\n  sub "a" "A"\n}`,
     )
     const expanded = expandDocument(doc)
+    // the expansion does not END with a parallel block here, so the
+    // override rows append after it (fallback path, §4.2.2)
     expect(trace(expanded.stages[0]!.body)).toEqual(["parallel[b->y]", "sub c->z", "sub a->A"])
   })
 
-  it("appends override rows whose from matches nothing (they are simply added)", () => {
+  it("override rows share the expansion's trailing parallel pass — replacement acts on the source pass (§4.3)", () => {
+    // ruleset: generic table ends with a parallel block; the override
+    // replaces one of its rows. With the join, the replacement happens
+    // in the SAME pass — a row whose longer form exists in the block
+    // cannot be preempted by the generic shorter row.
+    const src = minimalWrap(
+      `ruleset rs {\nparallel {\n  sub "เก" "ke"\n  sub "เกะ" "ke"\n}\n}\nstage main {\nuse rs override {\n  sub "เก" "kē"\n}\n}`,
+    )
+    const expanded = expandDocument(wrapWithRs(
+      `parallel {\n  sub "เก" "ke"\n  sub "เกะ" "ke"\n}`,
+      `use rs override {\n  sub "เก" "kē"\n}`,
+    ))
+    // kept row keeps its order; the override joins the same block after it
+    expect(trace(expanded.stages[0]!.body)).toEqual(["parallel[เกะ->ke, เก->kē]"])
+    // "เกะ" must take its own row in the same pass, not the generic row
+    expect(run(src, "เกะ")).toBe("ke")
+    expect(run(src, "เก")).toBe("kē")
+  })
+
+  it("override rows append as bare rules only when the expansion does not end in parallel", () => {
     const doc = wrapWithRs(`sub "a" "x"`, `use rs override {\n  sub "q" "Q"\n}`)
     const expanded = expandDocument(doc)
     expect(trace(expanded.stages[0]!.body)).toEqual(["sub a->x", "sub q->Q"])
