@@ -125,7 +125,9 @@ function expandUse(
 /**
  * Remove every rule whose from matches an override row (from anywhere in
  * the expansion — bare rules and rules inside parallel/sequence blocks),
- * then append the override rows at the expansion site.
+ * then add the override rows: joined INTO a trailing parallel block when
+ * the expansion ends with one (§4.2.5 — the whole expansion shares that
+ * single longest-match pass), otherwise appended at the expansion site.
  */
 function applyOverride(
   expanded: readonly IscStageItem[],
@@ -146,6 +148,11 @@ function applyOverride(
     }
   }
 
+  const tail = kept[kept.length - 1]
+  if (tail && tail.kind === "parallel") {
+    kept[kept.length - 1] = { ...tail, rules: [...tail.rules, ...overrides] }
+    return kept
+  }
   const added: IscStageItem[] = overrides.map((rule) => ({ kind: "bare_rule", rule }))
   return [...kept, ...added]
 }
