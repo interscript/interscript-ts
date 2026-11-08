@@ -22,17 +22,33 @@ export interface CompiledItem {
  * Compile an Item into a RegExp source string + literal value.
  * Visitor-free dispatch — adding a new Item kind = adding a case here.
  *
+ * `classCtx` selects the compile context. Ruby/RS resolve aliases in two
+ * contexts (NodeAdapter#materialize_class vs #materialize, mirrored in
+ * interscript-rs builder.rs):
+ *
+ * - sequence context (default): an alias resolving to a String is a
+ *   literal sequence;
+ * - class context (constraint positions — before/not_before/after/
+ *   not_after — and the arguments of `any()`): an IMPORTED charset alias
+ *   (a dependency map's alias) resolving to a String is a per-character
+ *   set (`convert_class_alias` expands Item::Str into one entry per
+ *   char; Ruby `Any#to_regexp` builds a char class). A LOCAL string
+ *   alias stays a sequence even in class context, matching RS.
+ *
  * Note: this is intentionally a single switch with exhaustive type
  * coverage. New Item kinds force this switch to be updated, which is
  * good — it surfaces the change rather than hiding it.
  */
-export function compileItem(item: Item, ctx: ExecutionContext): CompiledItem {
+export function compileItem(item: Item, ctx: ExecutionContext, classCtx = false): CompiledItem {
   switch (item.kind) {
     case "string":
       return { re: regexpEscape(item.value), literal: item.value }
 
     case "capture_group": {
-      const inner = compileItem(item.data, ctx)
+      // RS converts capture innards in sequence context even inside a
+      // constraint (convert_class_fragment only class-resolves the
+      // top-level alias).
+      const inner = compileItem(item.data, ctx, false)
       return { re: `(${inner.re})`, literal: inner.literal }
     }
 
@@ -47,15 +63,27 @@ export function compileItem(item: Item, ctx: ExecutionContext): CompiledItem {
       if (stdlib) return stdlib
       const resolved = ctx.resolveAlias(item.name)
       if (!resolved) return { re: "", literal: "" }
-      return compileItem(resolved, ctx)
+      if (classCtx && !ctx.map.aliases.has(item.name) && resolved.kind === "string") {
+        // Imported charset alias in class position: per-character set.
+        return stringCharset(resolved.value)
+      }
+      return compileItem(resolved, ctx, classCtx)
     }
 
     case "any": {
-      const parts = item.of.map((i) => compileItem(i, ctx).re)
+      // any() arguments are class-resolved regardless of the surrounding
+      // context (RS convert_any_arg routes alias entries through
+      // convert_set_entry -> convert_class_alias). Concatenation/capture
+      // entries inside a list stay sequence-resolved — only alias
+      // entries differ per context.
+      const parts = item.of.map((i) => compileItem(i, ctx, i.kind === "alias").re)
       // Mirror Ruby's Any#nth_string: the literal form picks the first
       // alternative. Sub rules with `to: any("ie")` use this for the
       // canonical replacement.
-      const firstLit = item.of.length > 0 ? compileItem(item.of[0]!, ctx).literal : ""
+      const firstLit =
+        item.of.length > 0
+          ? compileItem(item.of[0]!, ctx, item.of[0]!.kind === "alias").literal
+          : ""
       return { re: `(?:${parts.join("|")})`, literal: firstLit }
     }
 
@@ -94,6 +122,21 @@ export function compileItem(item: Item, ctx: ExecutionContext): CompiledItem {
     case "stage_ref":
       // Stage references are handled by the executor, not by item compilation.
       return { re: "", literal: "" }
+  }
+}
+
+/**
+ * Compile a String charset as a per-character SET (class context).
+ * Mirrors RS `convert_class_alias` expanding Item::Str into one entry
+ * per char, and Ruby `Any#to_regexp` building a char class from String
+ * data. Compiled as an alternation (not a `[...]` class) so astral
+ * code points and regexp-escaped chars stay correct under the `u` flag.
+ */
+function stringCharset(value: string): CompiledItem {
+  const chars = Array.from(value)
+  return {
+    re: `(?:${chars.map((c) => regexpEscape(c)).join("|")})`,
+    literal: chars[0] ?? "",
   }
 }
 
