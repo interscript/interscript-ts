@@ -26,6 +26,8 @@ export function normaliseMap(json: CompiledMapJson): CompiledMap {
     functions: new Map(),
   } as CompiledMapBuilder
   if (json.metadata) out.metadata = json.metadata
+  // ISC-WF-1 W3 — declared languages (absent on legacy maps).
+  if (json.languages) out.languages = json.languages
   return out
 }
 

@@ -46,6 +46,11 @@ export interface CompiledMapJson {
   readonly schemaVersion: 1
   readonly systemCode: SystemCode
   readonly dependencies: readonly SystemCode[]
+  /**
+   * ISC-WF-1 W3 — languages the map serves (`languages` declaration).
+   * Absent when the map declares none (legacy JSON shape unchanged).
+   */
+  readonly languages?: readonly string[]
   readonly metadata?: Readonly<Record<string, unknown>>
   readonly stages: readonly Stage[]
   readonly aliases: Readonly<Record<string, Item>>
@@ -62,6 +67,8 @@ export interface CompiledMap {
   readonly schemaVersion: 1
   readonly systemCode: SystemCode
   readonly dependencies: readonly SystemCode[]
+  /** ISC-WF-1 W3 — declared languages; absent when the map declares none. */
+  readonly languages?: readonly string[]
   readonly metadata?: Readonly<Record<string, unknown>>
   readonly stages: readonly Stage[]
   readonly aliases: ReadonlyMap<string, Item>
@@ -101,6 +108,12 @@ export interface SubRule {
   readonly notBefore?: Item
   readonly notAfter?: Item
   readonly priority?: number
+  /**
+   * ISC-WF-1 W3 — languages this rule applies to. Unguarded rules apply
+   * always; guarded rules apply only when the caller selected one of
+   * these languages (and it is declared by the map). See executor.ts.
+   */
+  readonly when?: readonly string[]
 }
 
 export interface RunRule {

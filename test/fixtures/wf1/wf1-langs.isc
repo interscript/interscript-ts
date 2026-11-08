@@ -1,0 +1,25 @@
+system "wf1-langs:rus-Cyrl:Latn:2026" {
+
+# ISC-WF-1 W3 fixture — language conditioning (§5.4 example shape).
+#   no language  -> generic rows only (all guards inert)
+#   language kur -> guard-applicable қ→k̦ wins; ҫ/ж guards for chv inert
+#   language chv -> guard-applicable ҫ→ș wins; kur guards inert
+
+languages kur chv
+
+stage main {
+  parallel {
+    sub "қ" "ķ"
+    sub "қ" "k̦" when kur
+    sub "ҫ" "ş"
+    sub "ҫ" "ș" when chv
+  }
+  sub "ж" "ž" when kur
+}
+
+tests {
+  # no language selected — every guard inert, generic rows apply
+  "қҫж" -> "ķşж"
+}
+
+}

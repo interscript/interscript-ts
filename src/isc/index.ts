@@ -10,15 +10,17 @@
  */
 
 export { parseIsc } from "./parser.js"
-export { iscToCompiledMap } from "./converter.js"
+export { iscToCompiledMap, type IscToCompiledMapOptions } from "./converter.js"
+export { expandDocument, requiredDependencyDocs, type DependencyDocResolver } from "./expand.js"
 export { iscStrategy, iscBundledStrategy } from "./loader.js"
 export type {
   IscDocument,
   IscItem,
   IscRule,
+  IscRuleset,
   IscStage,
   IscStageItem,
   IscTest,
   IscConstraint,
 } from "./types.js"
-export { IscParseError } from "./types.js"
+export { IscParseError, IscLoadError } from "./types.js"

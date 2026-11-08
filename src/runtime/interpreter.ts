@@ -47,6 +47,10 @@ function containsAsyncFuncalls(rules: readonly Rule[]): boolean {
 /**
  * Run a single stage by name (SYNC path). Returns the transformed string.
  *
+ * `language` is the ISC-WF-1 W3 selection: when given (and declared by
+ * the map), `when`-guarded rules whose list contains it apply; all other
+ * guarded rules are inert.
+ *
  * Throws if the stage contains ML funcalls — use `executeStageAsync`
  * for those.
  */
@@ -55,6 +59,7 @@ export function executeStage(
   stageName: string,
   input: string,
   loader?: MapLoader,
+  language?: string,
 ): string {
   const stage: Stage | undefined = map.stages.find((s) => s.name === stageName)
   if (!stage) {
@@ -68,7 +73,7 @@ export function executeStage(
     )
   }
 
-  const ctx = new ExecutionContext(map, input, loader)
+  const ctx = new ExecutionContext(map, input, loader, language)
   for (const rule of stage.rules) {
     executeRule(rule, ctx)
   }
@@ -85,6 +90,7 @@ export async function executeStageAsync(
   stageName: string,
   input: string,
   loader?: MapLoader,
+  language?: string,
 ): Promise<string> {
   const stage: Stage | undefined = map.stages.find((s) => s.name === stageName)
   if (!stage) {
@@ -93,11 +99,11 @@ export async function executeStageAsync(
 
   // Fast path: no async functions → use the sync executor directly.
   if (!containsAsyncFuncalls(stage.rules)) {
-    return executeStage(map, stageName, input, loader)
+    return executeStage(map, stageName, input, loader, language)
   }
 
   // Async path: same executors, but funcall results are awaited.
-  const ctx = new ExecutionContext(map, input, loader)
+  const ctx = new ExecutionContext(map, input, loader, language)
   for (const rule of stage.rules) {
     await executeRuleAsync(rule, ctx)
   }

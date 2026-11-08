@@ -14,6 +14,7 @@ import type {
   IscDocument,
   IscItem,
   IscRule,
+  IscRuleset,
   IscStage,
   IscStageItem,
   IscTest,
@@ -33,6 +34,44 @@ const PRIMITIVES = new Set([
 const FUNCTIONS = new Set(["upcase", "downcase", "title_case", "reverse", "strip", "swapcase"])
 
 const CONSTRAINTS = new Set(["before", "after", "not_before", "not_after"])
+
+/**
+ * Words that terminate an open-ended identifier list (the `languages`
+ * declaration and `when` guard lists). Every construct keyword of the
+ * language plus the block terminators — a corpus identifier never
+ * collides because ISC-WF-1 added these words to the keyword table
+ * (spec §2; verified against the 404-map corpus at adoption).
+ */
+const TERMINATORS = new Set([
+  "metadata",
+  "tests",
+  "aliases",
+  "stage",
+  "dependency",
+  "ruleset",
+  "languages",
+  "parallel",
+  "sequence",
+  "run",
+  "separate",
+  "compose",
+  "decompose",
+  "sub",
+  "use",
+  "when",
+  "override",
+  "rababa",
+  "note",
+  "from",
+  "to",
+  "before",
+  "after",
+  "not_before",
+  "not_after",
+  "}",
+  ...FUNCTIONS,
+  ...PRIMITIVES,
+])
 
 export function parseIsc(source: string, filename?: string): IscDocument {
   return new Parser(source, filename).parse()
@@ -64,17 +103,31 @@ class Parser {
     let tests: IscTest[] = []
     let aliases: Array<{ name: string; value: IscItem }> = []
     const stages: IscStage[] = []
+    const rulesets: IscRuleset[] = []
     const dependencies: Array<{ target: string; aliasName?: string }> = []
+    const languages = new Set<string>()
 
     for (const item of body) {
       if (item.metadata) metadata = { ...metadata, ...item.metadata }
       else if (item.tests) tests = item.tests
       else if (item.aliases) aliases = item.aliases
       else if (item.stage) stages.push(item.stage)
+      else if (item.ruleset) rulesets.push(item.ruleset)
       else if (item.dependency) dependencies.push(item.dependency)
+      else if (item.languages) for (const l of item.languages) languages.add(l)
     }
 
-    return { systemCode, metadata, tests, aliases, stages, dependencies }
+    const doc: IscDocument = {
+      systemCode,
+      metadata,
+      tests,
+      aliases,
+      stages,
+      dependencies,
+      ...(rulesets.length > 0 ? { rulesets } : {}),
+      ...(languages.size > 0 ? { languages: [...languages] } : {}),
+    }
+    return doc
   }
 
   // -- Block items --
@@ -90,10 +143,59 @@ class Parser {
       else if (keyword === "tests") items.push(this.parseTests())
       else if (keyword === "aliases") items.push(this.parseAliases())
       else if (keyword === "stage") items.push(this.parseStage())
+      else if (keyword === "ruleset") items.push(this.parseRuleset())
+      else if (keyword === "languages") items.push(this.parseLanguages())
       else if (keyword === "dependency") items.push(this.parseDependency())
       else this.error(`Unexpected keyword: ${keyword}`)
     }
     return items
+  }
+
+  // -- Languages (ISC-WF-1 W3) --
+
+  /**
+   * `languages ident (","? ident)*` — declared inside the system block,
+   * alongside metadata. Like metadata, a second declaration merges.
+   */
+  private parseLanguages(): ParsedBlockItem {
+    this.expect("languages")
+    const languages = this.parseIdentList()
+    return { languages }
+  }
+
+  /**
+   * Open-ended identifier list: `ident (","? ident)*`, terminated by any
+   * language keyword (TERMINATORS) or `}`.
+   */
+  private parseIdentList(): string[] {
+    const out: string[] = []
+    for (;;) {
+      this.skipWs()
+      const word = this.peekWord()
+      if (!word || TERMINATORS.has(word)) break
+      out.push(this.parseIdentifier())
+      this.skipInlineWs()
+      if (this.peek() === ",") this.pos++
+    }
+    return out
+  }
+
+  // -- Rulesets (ISC-WF-1 W1) --
+
+  /**
+   * `ruleset <ident> { <stage body items> }` — a named block of stage
+   * items. A ruleset never executes on its own; it is expanded at `use`
+   * sites by expandDocument().
+   */
+  private parseRuleset(): ParsedBlockItem {
+    this.expect("ruleset")
+    this.skipWs()
+    const name = this.parseIdentifier()
+    this.skipWs()
+    this.expect("{")
+    const body = this.parseStageBodyItems()
+    this.expect("}")
+    return { ruleset: { name, body } }
   }
 
   // -- Metadata --
@@ -251,6 +353,16 @@ class Parser {
     const name = this.parseIdentifier()
     this.skipWs()
     this.expect("{")
+    const body = this.parseStageBodyItems()
+    this.expect("}")
+    return { stage: { name, body } }
+  }
+
+  /**
+   * Stage body items — shared by `stage` and `ruleset` blocks (a ruleset
+   * accepts exactly the items a stage does, ISC-WF-1 §3.1).
+   */
+  private parseStageBodyItems(): IscStageItem[] {
     const body: IscStageItem[] = []
 
     for (;;) {
@@ -308,6 +420,8 @@ class Parser {
             ? { kind: "run", dependency: dep, stage: stageName }
             : { kind: "run", stage: stageName },
         )
+      } else if (keyword === "use") {
+        body.push(this.parseUse())
       } else if (keyword === "separate") {
         this.consume("separate")
         this.skipWs()
@@ -355,8 +469,56 @@ class Parser {
         this.skipLine()
       }
     }
-    this.expect("}")
-    return { stage: { name, body } }
+    return body
+  }
+
+  /**
+   * `use <ident>` / `use <alias>.<ident>` with optional
+   * `override { <sub rules> }` — ISC-WF-1 W1/W2. The override block is
+   * part of the directive: one syntax, one site (§4.1).
+   */
+  private parseUse(): IscStageItem {
+    this.expect("use")
+    this.skipWs()
+    const first = this.parseIdentifier()
+    let name = first
+    let dependency: string | undefined
+    this.skipInlineWs()
+    if (this.peek() === ".") {
+      this.pos++
+      dependency = first
+      name = this.parseIdentifier()
+    }
+    this.skipWs()
+    let override: IscRule[] | undefined
+    if (this.peekWord() === "override") {
+      this.consume("override")
+      this.skipWs()
+      this.expect("{")
+      override = []
+      for (;;) {
+        this.skipWs()
+        if (this.peek() === "}") break
+        if (this.peek() === "#") {
+          this.skipLine()
+          continue
+        }
+        if (this.peekWord() === "sub") {
+          override.push(this.parseRule())
+        } else {
+          // Same parity behavior as rule blocks: unrecognized tokens
+          // are silently dropped.
+          this.skipLine()
+        }
+      }
+      this.expect("}")
+    }
+    return {
+      kind: "use",
+      name,
+      ...(dependency !== undefined ? { dependency } : {}),
+      ...(override !== undefined ? { override } : {}),
+    }
   }
 
   // -- Rules --
@@ -394,10 +556,11 @@ class Parser {
         }
       }
       this.expect("}")
-      return { from, to, constraints }
+      const when = this.parseWhenSuffix()
+      return { from, to, constraints, ...(when ? { when } : {}) }
     }
 
-    // Compact form: sub <from> <to> <constraints>
+    // Compact form: sub <from> <to> <constraints> <when ...>
     const from = this.parseItemAtom()
     this.skipWs()
     const to = this.parseItemAtom()
@@ -412,7 +575,21 @@ class Parser {
       constraints.push({ kind: word, item: this.parseItemAtom() })
     }
 
-    return { from, to, constraints }
+    const when = this.parseWhenSuffix()
+    return { from, to, constraints, ...(when ? { when } : {}) }
+  }
+
+  /**
+   * `when ident (","? ident)*` — ISC-WF-1 W3 guard suffix on sub rules
+   * (§2: attaches to a sub rule only, not to blocks). Absent → undefined.
+   */
+  private parseWhenSuffix(): string[] | undefined {
+    this.skipWs()
+    if (this.peekWord() !== "when") return undefined
+    this.consume("when")
+    const languages = this.parseIdentList()
+    if (languages.length === 0) this.error("Expected at least one language after when")
+    return languages
   }
 
   // -- Items --
@@ -761,5 +938,7 @@ interface ParsedBlockItem {
   tests?: IscTest[]
   aliases?: Array<{ name: string; value: IscItem }>
   stage?: IscStage
+  ruleset?: IscRuleset
+  languages?: string[]
   dependency?: { target: string; aliasName?: string }
 }
