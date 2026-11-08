@@ -362,10 +362,12 @@ describe("expandDocument — W2 override merge", () => {
     const src = minimalWrap(
       `ruleset rs {\nparallel {\n  sub "เก" "ke"\n  sub "เกะ" "ke"\n}\n}\nstage main {\nuse rs override {\n  sub "เก" "kē"\n}\n}`,
     )
-    const expanded = expandDocument(wrapWithRs(
-      `parallel {\n  sub "เก" "ke"\n  sub "เกะ" "ke"\n}`,
-      `use rs override {\n  sub "เก" "kē"\n}`,
-    ))
+    const expanded = expandDocument(
+      wrapWithRs(
+        `parallel {\n  sub "เก" "ke"\n  sub "เกะ" "ke"\n}`,
+        `use rs override {\n  sub "เก" "kē"\n}`,
+      ),
+    )
     // kept row keeps its order; the override joins the same block after it
     expect(trace(expanded.stages[0]!.body)).toEqual(["parallel[เกะ->ke, เก->kē]"])
     // "เกะ" must take its own row in the same pass, not the generic row
