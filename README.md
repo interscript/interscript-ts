@@ -53,6 +53,27 @@ transliterate("odni-rus-Cyrl-Latn-2015", "привет")     // → "privet"
 transliterate("alalc-amh-Ethi-Latn-2011", "ኢትዮጵያ")    // → "ʼiteyop̣eyā"
 ```
 
+## Workflow extension (ISC-WF-1)
+
+Maps can reuse rule blocks and condition rows on a language. A
+`ruleset` is spliced at a `use` position (recursively, across declared
+dependencies); `use ... override { ... }` replaces rows on byte-exact
+from-equality; a `languages` declaration plus `when` guards let the
+caller select a language per call — guards are inert without a
+selection:
+
+```typescript
+// W3: select one of the map's declared languages; guards are inert
+// when no (or an undeclared) language is passed
+transliterate("some-map-id", "...", undefined, "kur")
+```
+
+The constructs are additive: maps that don't use them transliterate
+identically. The corpus adoption so far is the Thai leading-vowel
+shared ruleset (W1/W2, `libs/thai-latn.isc`); W3 conditioning is
+exercised by the conformance fixtures. Normative text: interscript/maps
+`docs/isc-wf-1.md`.
+
 ## Filesystem loader (Node)
 
 ```typescript
