@@ -98,19 +98,24 @@ function lex(text: string): Token[] {
       continue
     }
     if (c === "%") {
-      if (text.startsWith("%s\"", pos)) {
+      if (text.startsWith('%s"', pos)) {
         SSTR_RE.lastIndex = pos
         const m = SSTR_RE.exec(text)
-        if (!m || m.index !== pos) throw new PargParseError(`unterminated %s"..." literal at offset ${pos}`)
+        if (!m || m.index !== pos)
+          throw new PargParseError(`unterminated %s"..." literal at offset ${pos}`)
         tokens.push({ type: "sstr", value: m[0].slice(3, -1), offset: pos })
         pos = SSTR_RE.lastIndex
         continue
       }
-      if (text.startsWith("%i\"", pos)) {
-        throw new PargParseError(`%i"..." case-insensitive literals are not supported by this reader (offset ${pos})`)
+      if (text.startsWith('%i"', pos)) {
+        throw new PargParseError(
+          `%i"..." case-insensitive literals are not supported by this reader (offset ${pos})`,
+        )
       }
       if (text.startsWith("%p{", pos)) {
-        throw new PargParseError(`%p{...} category classes are not supported by this reader (offset ${pos})`)
+        throw new PargParseError(
+          `%p{...} category classes are not supported by this reader (offset ${pos})`,
+        )
       }
       HEX_RE.lastIndex = pos
       const m = HEX_RE.exec(text)
@@ -124,7 +129,8 @@ function lex(text: string): Token[] {
     if (c === '"') {
       STR_RE.lastIndex = pos
       const m = STR_RE.exec(text)
-      if (!m || m.index !== pos) throw new PargParseError(`unterminated string literal at offset ${pos}`)
+      if (!m || m.index !== pos)
+        throw new PargParseError(`unterminated string literal at offset ${pos}`)
       tokens.push({ type: "str", value: m[0].slice(1, -1), offset: pos })
       pos = STR_RE.lastIndex
       continue
@@ -202,7 +208,9 @@ class PargParser {
     const t = this.advance()
     if (t.type !== type || (value !== undefined && t.value !== value)) {
       const found = `${t.type}:${JSON.stringify(t.value)}`
-      throw new PargParseError(`expected ${value ? JSON.stringify(value) : type}, got ${found} at offset ${t.offset}`)
+      throw new PargParseError(
+        `expected ${value ? JSON.stringify(value) : type}, got ${found} at offset ${t.offset}`,
+      )
     }
     return t
   }
@@ -216,7 +224,9 @@ class PargParser {
     while (this.pos < this.tokens.length) {
       const section = this.advance()
       if (section.type !== "ident") {
-        throw new PargParseError(`expected a section (grammar/entry), got ${section.type} at offset ${section.offset}`)
+        throw new PargParseError(
+          `expected a section (grammar/entry), got ${section.type} at offset ${section.offset}`,
+        )
       }
       if (section.value === "grammar") this.parseGrammar()
       else if (section.value === "entry") this.parseEntry()
@@ -282,7 +292,10 @@ class PargParser {
     const t = this.peek()
     if (t === undefined) return true
     if (t.type === "newline") return true
-    return t.type === "punct" && (t.value === "/" || t.value === ")" || t.value === "]" || t.value === "}")
+    return (
+      t.type === "punct" &&
+      (t.value === "/" || t.value === ")" || t.value === "]" || t.value === "}")
+    )
   }
 
   private parseChoice(): PargNode {
@@ -385,18 +398,24 @@ class PargParser {
           this.expect("punct", "]")
           return { k: "rep", a: node, min: 0, max: 1, maybe: true }
         }
-        throw new PargParseError(`unexpected ${JSON.stringify(t.value)} in expression at offset ${t.offset}`)
+        throw new PargParseError(
+          `unexpected ${JSON.stringify(t.value)} in expression at offset ${t.offset}`,
+        )
       case "ident": {
         if (t.value === "until") {
           throw new PargParseError(`"until" is not supported by this reader (offset ${t.offset})`)
         }
         if (t.value === "alt" || t.value === "state" || t.value === "set" || t.value === "switch") {
-          throw new PargParseError(`"${t.value}" is not supported by this reader (offset ${t.offset})`)
+          throw new PargParseError(
+            `"${t.value}" is not supported by this reader (offset ${t.offset})`,
+          )
         }
         return { k: "ref", name: t.value }
       }
       default:
-        throw new PargParseError(`unexpected token ${t.type}:${JSON.stringify(t.value)} at offset ${t.offset}`)
+        throw new PargParseError(
+          `unexpected token ${t.type}:${JSON.stringify(t.value)} at offset ${t.offset}`,
+        )
     }
   }
 

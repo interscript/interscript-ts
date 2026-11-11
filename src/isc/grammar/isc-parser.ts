@@ -79,7 +79,9 @@ function compileGrammar(): Compiled {
   for (const name of ["any_arg", "block_rule", "run_dep"]) {
     const replacement = ext.rules[name]
     if (rules[name] === undefined || replacement === undefined) {
-      throw new Error(`grammar extension target ${name} missing from isc.parg — recheck GRAMMAR_EXTENSIONS`)
+      throw new Error(
+        `grammar extension target ${name} missing from isc.parg — recheck GRAMMAR_EXTENSIONS`,
+      )
     }
     rules[name] = replacement
   }
