@@ -12,14 +12,7 @@
  * decide to align the runtimes.
  */
 
-import type {
-  IscDocument,
-  IscItem,
-  IscRule,
-  IscStage,
-  IscStageItem,
-  IscTest,
-} from "../types.js"
+import type { IscDocument, IscItem, IscRule, IscStage, IscStageItem, IscTest } from "../types.js"
 import { IscParseError } from "../types.js"
 import { Slice } from "./peg.js"
 
@@ -34,7 +27,8 @@ function hash(v: Tree): Hash {
 }
 
 function array(v: Tree): Tree[] {
-  if (!Array.isArray(v)) throw new Error(`grammar/action mismatch: expected an array, got ${JSON.stringify(v)}`)
+  if (!Array.isArray(v))
+    throw new Error(`grammar/action mismatch: expected an array, got ${JSON.stringify(v)}`)
   return v
 }
 
@@ -194,7 +188,8 @@ export class TreeToDocument {
     if (h.any_char !== undefined) return { type: "function", name: "any_character" }
     if (h.function !== undefined) return { type: "function", name: text(h.function) }
     if (h.any !== undefined) return this.any(hash(h.any))
-    if (h.capture_inner !== undefined) return { type: "capture_group", inner: this.item(h.capture_inner) }
+    if (h.capture_inner !== undefined)
+      return { type: "capture_group", inner: this.item(h.capture_inner) }
     if (h.maybe_inner !== undefined) return { type: "maybe", inner: this.item(h.maybe_inner) }
     if (h.some_inner !== undefined) return { type: "some", inner: this.item(h.some_inner) }
     if (h.ref !== undefined) {
@@ -249,9 +244,7 @@ export class TreeToDocument {
     })
     const whenList = this.itemList(h.when)
     const when =
-      whenList !== undefined
-        ? whenList.map((w) => identifier(hash(hash(w).when_lang)))
-        : undefined
+      whenList !== undefined ? whenList.map((w) => identifier(hash(hash(w).when_lang))) : undefined
     // Compact rules capture raw item_atoms (`sub "a" "b"`); block rules
     // capture full items (`from "a"` — a concatenation tree). The
     // concatenation key tells them apart.
@@ -351,7 +344,7 @@ export class TreeToDocument {
         const name = identifier(hash(u.use_alias))
         const qualified = u.qualified_name !== undefined ? identifier(u.qualified_name) : undefined
         const overrides =
-        u.use_overrides !== undefined ? this.ruleList(array(u.use_overrides)) : undefined
+          u.use_overrides !== undefined ? this.ruleList(array(u.use_overrides)) : undefined
         // Hand parser: `use a.b` names the ruleset b, reached through dependency a.
         out.push({
           kind: "use",
@@ -374,7 +367,8 @@ export class TreeToDocument {
       const h = hash(tree)
       if (h.field_name !== undefined) {
         const key = identifier(h.field_name)
-        if (h.field_value !== undefined) metadata[key] = this.fieldValue(h.field_value, h.field_name)
+        if (h.field_value !== undefined)
+          metadata[key] = this.fieldValue(h.field_value, h.field_name)
         else if (h.field_block !== undefined) metadata[key] = this.rawText(h.field_block)
         else metadata[key] = ""
         continue
@@ -419,7 +413,13 @@ export class TreeToDocument {
       // String-valued named fields: authority / name / identifying /
       // source_spelling / target_spelling — the hand parser reaches the
       // same values through the generic-field path.
-      for (const key of ["authority", "name", "identifying", "source_spelling", "target_spelling"]) {
+      for (const key of [
+        "authority",
+        "name",
+        "identifying",
+        "source_spelling",
+        "target_spelling",
+      ]) {
         if (h[key] !== undefined) {
           metadata[key] = this.string(h[key])
           break
@@ -473,7 +473,12 @@ export class TreeToDocument {
   private valueStart(h: Hash, fieldName?: Tree): number | null {
     const parts = h.string
     if (Array.isArray(parts)) {
-      if (parts.length > 0 && parts[0] !== null && typeof parts[0] === "object" && !Array.isArray(parts[0])) {
+      if (
+        parts.length > 0 &&
+        parts[0] !== null &&
+        typeof parts[0] === "object" &&
+        !Array.isArray(parts[0])
+      ) {
         const run = hash(parts[0]).run
         if (run instanceof Slice) return run.offset - 1
       }
@@ -516,7 +521,12 @@ export function lineCol(src: string, pos: number): { line: number; col: number }
 }
 
 /** Build an IscParseError the way the hand parser reports failures. */
-export function parseError(src: string, message: string, at: number, filename?: string): IscParseError {
+export function parseError(
+  src: string,
+  message: string,
+  at: number,
+  filename?: string,
+): IscParseError {
   const { line, col } = lineCol(src, at)
   const loc = filename ? `${filename}: ` : ""
   return new IscParseError(`${loc}${message}`, at, line, col)

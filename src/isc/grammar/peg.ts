@@ -100,7 +100,8 @@ function mergeFold(l: unknown, r: unknown): unknown {
   const rStr = isStringlike(r)
 
   // equal pairs: merge
-  if (lHash && rHash) return { ...(l as Record<string, unknown>), ...(r as Record<string, unknown>) }
+  if (lHash && rHash)
+    return { ...(l as Record<string, unknown>), ...(r as Record<string, unknown>) }
   if (Array.isArray(l) && Array.isArray(r)) return [...(l as unknown[]), ...(r as unknown[])]
   if (l instanceof Slice && r instanceof Slice) {
     return new Slice(l.offset, l.content + r.content)
