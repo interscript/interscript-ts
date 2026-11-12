@@ -44,6 +44,20 @@ async function loadOrt(): Promise<OnnxNodeModule> {
   }
 }
 
+/**
+ * float16 feeds cannot cross the onnxruntime-node binding on runtimes
+ * with native Float16Array (Node >= 24): ORT's JS Tensor converts every
+ * float16 feed into a Float16Array view, and the N-API binding reads
+ * that buffer as zero bytes, so session.run fails with the opaque
+ * "not enough space: expected N, got 0" (issue #111). On pre-Float16Array
+ * runtimes the same feed stays Uint16Array-backed and is consumed fine
+ * (verified Node 20/22 ok, Node 24/26 broken). Artifacts with float16
+ * graph I/O (the pre-WO79 fp16 exports) must be IO-normalized instead:
+ * interscript-models tools/normalize_fp16_io.py.
+ */
+const FLOAT16_FEEDS_CONSUMABLE =
+  typeof (globalThis as { Float16Array?: unknown }).Float16Array === "undefined"
+
 class NodeInferenceSession implements InferenceSession {
   private readonly session: OnnxNodeSession
   private readonly ort: OnnxNodeModule
@@ -76,6 +90,15 @@ class NodeInferenceSession implements InferenceSession {
   async run(inputs: InferenceInputs): Promise<InferenceOutputs> {
     const feeds: Record<string, unknown> = {}
     for (const [name, tensor] of Object.entries(inputs)) {
+      if (tensor.type === "float16" && !FLOAT16_FEEDS_CONSUMABLE) {
+        throw new Error(
+          `input '${name}' is float16: float16 graph I/O cannot cross the onnxruntime-node ` +
+            `binding on this runtime (the feed is converted to a Float16Array the binding reads ` +
+            `as zero bytes, surfacing as "not enough space: expected N, got 0"). The artifact's ` +
+            `graphs must expose fp32 graph I/O — re-export with interscript-models ` +
+            `tools/normalize_fp16_io.py.`,
+        )
+      }
       feeds[name] = new this.ort.Tensor(tensor.type, tensor.data, tensor.dims)
     }
     const outputs = await this.session.run(feeds)
