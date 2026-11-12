@@ -151,6 +151,14 @@ npm run gen:parity
 - **Parity:** byte-exact comparison with Ruby interpreter across 5 sample maps
 - **Bench:** trie reuse, parallel replace, end-to-end transliteration
 
+## Browser support
+
+Contextual rules compile to lookbehind/lookahead assertions, so the
+runtime requires a browser engine with RegExp lookbehind: Safari 16.4+,
+Chrome 62+, Firefox 78+, Edge 79+ (and any bundler target that does not
+transpile `RegExp` semantics away). Older Safari builds fail at match
+time rather than mis-transliterating.
+
 ## License
 
 BSD-2-Clause — Ribose Inc.
