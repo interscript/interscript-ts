@@ -27,13 +27,21 @@ export interface ModelRef {
  * Record of named tensors.
  */
 export type TensorData =
-  Int8Array | Uint8Array | Int16Array | Int32Array | Float32Array | Float64Array | BigInt64Array
+  | Int8Array
+  | Uint8Array
+  | Int16Array
+  | Uint16Array
+  | Int32Array
+  | Float32Array
+  | Float64Array
+  | BigInt64Array
 
 export interface Tensor {
   readonly name: string
   readonly data: TensorData
   readonly dims: readonly number[]
-  readonly type: "int8" | "uint8" | "int16" | "int32" | "int64" | "float32" | "float64"
+  readonly type:
+    "int8" | "uint8" | "int16" | "uint16" | "int32" | "int64" | "float32" | "float64" | "float16"
 }
 
 export interface InferenceInputs {
