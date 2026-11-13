@@ -13,6 +13,7 @@
 
 import type { CompiledMap, Rule, Stage } from "../types.js"
 import type { MapLoader } from "../loader.js"
+import { MapLogicError } from "../errors.js"
 import { ExecutionContext } from "./context.js"
 import { executeRule } from "./executor.js"
 
@@ -25,6 +26,11 @@ const ASYNC_FUNCTIONS = new Set<string>(["rababa", "secryst"])
 /** Register an additional async function name (used by ML modules). */
 export function registerAsyncFunction(name: string): void {
   ASYNC_FUNCTIONS.add(name)
+}
+
+/** WO18 G4: shared missing-stage error (rs message shape). */
+function missingStage(map: CompiledMap, stageName: string): MapLogicError {
+  return new MapLogicError(`stage "${stageName}" not found in ${map.systemCode}`)
 }
 
 /**
@@ -52,7 +58,8 @@ function containsAsyncFuncalls(rules: readonly Rule[]): boolean {
  * guarded rules are inert.
  *
  * Throws if the stage contains ML funcalls — use `executeStageAsync`
- * for those.
+ * for those. A missing stage raises MapLogicError (WO18 G4 parity
+ * audit: the old silent no-op hid map typos; mirrors rs/ruby).
  */
 export function executeStage(
   map: CompiledMap,
@@ -62,9 +69,7 @@ export function executeStage(
   language?: string,
 ): string {
   const stage: Stage | undefined = map.stages.find((s) => s.name === stageName)
-  if (!stage) {
-    return input
-  }
+  if (!stage) throw missingStage(map, stageName)
 
   if (containsAsyncFuncalls(stage.rules)) {
     throw new Error(
@@ -93,9 +98,7 @@ export async function executeStageAsync(
   language?: string,
 ): Promise<string> {
   const stage: Stage | undefined = map.stages.find((s) => s.name === stageName)
-  if (!stage) {
-    return input
-  }
+  if (!stage) throw missingStage(map, stageName)
 
   // Fast path: no async functions → use the sync executor directly.
   if (!containsAsyncFuncalls(stage.rules)) {
