@@ -8,6 +8,7 @@
 
 import type { Item } from "../types.js"
 import type { ExecutionContext } from "./context.js"
+import { MapLogicError } from "../errors.js"
 import { regexpEscape } from "../stdlib.js"
 
 /** Compiled form of a pattern Item. */
@@ -62,7 +63,11 @@ export function compileItem(item: Item, ctx: ExecutionContext, classCtx = false)
       const stdlib = STDLIB_ALIASES[item.name]
       if (stdlib) return stdlib
       const resolved = ctx.resolveAlias(item.name)
-      if (!resolved) return { re: "", literal: "" }
+      // WO18 G3 (parity audit): an unresolved alias is map-logic damage,
+      // not an empty matcher. Compiling `re: ""` matched at every string
+      // boundary and silently spliced the replacement text ("a" ->
+      // "XaX"); ruby raises SystemConversionError and rs fails at load.
+      if (!resolved) throw new MapLogicError(`Alias ${item.name} not found`)
       if (classCtx && !ctx.map.aliases.has(item.name) && resolved.kind === "string") {
         // Imported charset alias in class position: per-character set.
         return stringCharset(resolved.value)
