@@ -121,6 +121,41 @@ export function regexpEscape(input: string): string {
 }
 
 /**
+ * Count the numbered capture groups a RegExp source emits.
+ *
+ * Mirrors compile-item.ts's emission grammar: the ONLY capturing
+ * construct is `capture_group`, compiled as a bare `(...)`; every other
+ * group is non-capturing (`(?:...)`) or a lookaround (`(?=`, `(?!`,
+ * `(?<=`, `(?<!`). Escaped parens and parens inside char classes are
+ * literals. Keep this in step with compile-item.ts if its group
+ * conventions ever change.
+ */
+export function countCaptureGroups(re: string): number {
+  let count = 0
+  let i = 0
+  while (i < re.length) {
+    const c = re[i]
+    if (c === "\\") {
+      i += 2
+      continue
+    }
+    if (c === "[") {
+      // Char class: scan to the closing bracket, honouring escapes.
+      i++
+      while (i < re.length && re[i] !== "]") {
+        if (re[i] === "\\") i++
+        i++
+      }
+      i++
+      continue
+    }
+    if (c === "(" && re[i + 1] !== "?") count++
+    i++
+  }
+  return count
+}
+
+/**
  * Lowercase a string. Maps to `Interscript.functions.downcase`.
  */
 export function downcase(input: string): string {
@@ -179,6 +214,11 @@ export function decompose(input: string): string {
  *
  * Onigmo and V8 share alternation semantics: at each scan position,
  * alternatives are tried in declaration order and the first match wins.
+ *
+ * Capture templates resolve against the RULE'S OWN capture list (rs
+ * semantics, WO18 G1): the wrapping groups occupy the leading slots of
+ * the global group list, so each rule's replacement receives only the
+ * slice of numbered groups belonging to its own pattern.
  */
 export interface MegaregexpRule {
   readonly pattern: string
@@ -189,13 +229,26 @@ export function parallelMegaregexp(input: string, rules: readonly MegaregexpRule
   if (rules.length === 0) return input
   const parts = rules.map((r, i) => `(?<__r${i}>${r.pattern})`)
   const re = new RegExp(parts.join("|"), "gmu")
+  // Numbered groups BEFORE each rule's wrapper: one wrapper per earlier
+  // rule plus each earlier rule's inner captures. Rule i's own captures
+  // therefore occupy global slice [before + 1, before + 1 + count).
+  const before: number[] = []
+  const counts: number[] = []
+  let base = 0
+  for (const r of rules) {
+    before.push(base)
+    const n = countCaptureGroups(r.pattern)
+    counts.push(n)
+    base += 1 + n
+  }
   return input.replace(re, (...args: unknown[]) => {
     const groups = args[args.length - 1] as Record<string, string | undefined>
     for (let i = 0; i < rules.length; i++) {
       if (groups[`__r${i}`] !== undefined) {
         const match = args[0] as string
-        const captures = args.slice(1, -2) as (string | undefined)[]
-        return rules[i]!.replace(match, captures)
+        const all = args.slice(1, -2) as (string | undefined)[]
+        const start = before[i]! + 1
+        return rules[i]!.replace(match, all.slice(start, start + counts[i]!))
       }
     }
     return args[0] as string
