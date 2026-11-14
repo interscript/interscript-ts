@@ -43,6 +43,14 @@ export interface ExpandOptions {
 
 /** Expand every `use` in the document's stages; rulesets themselves never execute. */
 export function expandDocument(doc: IscDocument, opts: ExpandOptions = {}): IscDocument {
+  // WO18 G7 (py canon): a ruleset declared twice is a load error —
+  // keep-first silently hides map bugs and first-`.find` lookup makes
+  // the executed body declaration-order dependent.
+  const seenRs = new Set<string>()
+  for (const rs of doc.rulesets ?? []) {
+    if (!seenRs.has(rs.name)) seenRs.add(rs.name)
+    else throw new IscLoadError(`ruleset "${rs.name}" declared more than once in ${doc.systemCode}`)
+  }
   const scope: ExpandScope = {
     doc,
     docKey: doc.systemCode,

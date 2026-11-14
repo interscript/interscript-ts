@@ -288,6 +288,14 @@ describe("expandDocument — cycle and resolution errors (§3.2, §6.4)", () => 
     expect(() => expandDocument(doc)).toThrow(/use cycle/)
   })
 
+  it("rejects a duplicate ruleset definition (py canon - keep-first hides map bugs)", () => {
+    const doc = parseIsc(
+      minimalWrap(`ruleset a { sub "x" "1" }\nruleset a { sub "x" "2" }\nstage main { use a }`),
+    )
+    expect(() => expandDocument(doc)).toThrow(IscLoadError)
+    expect(() => expandDocument(doc)).toThrow(/declared more than once/)
+  })
+
   it("rejects a mutual cycle", () => {
     const doc = parseIsc(
       minimalWrap(`ruleset a { use b }\nruleset b { use a }\nstage main { use a }`),
