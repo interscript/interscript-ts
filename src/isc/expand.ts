@@ -26,14 +26,7 @@
  * error (IscLoadError, §3.2 / §6.4).
  */
 
-import type {
-  IscDocument,
-  IscItem,
-  IscRule,
-  IscStage,
-  IscStageItem,
-  IscUseItem,
-} from "./types.js"
+import type { IscDocument, IscItem, IscRule, IscStage, IscStageItem, IscUseItem } from "./types.js"
 import { IscLoadError } from "./types.js"
 
 /** Resolves a dependency target (system code) to its parsed document. */
@@ -70,10 +63,7 @@ interface ExpandScope {
   readonly chain: readonly string[]
 }
 
-function expandItems(
-  items: readonly IscStageItem[],
-  scope: ExpandScope,
-): IscStageItem[] {
+function expandItems(items: readonly IscStageItem[], scope: ExpandScope): IscStageItem[] {
   const out: IscStageItem[] = []
   for (const item of items) {
     if (item.kind === "use") {
