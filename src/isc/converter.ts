@@ -19,6 +19,7 @@
 
 import type { IscDocument, IscItem, IscRule, IscStageItem } from "./types.js"
 import { IscLoadError } from "./types.js"
+import { MapLogicError } from "../errors.js"
 import { expandDocument, type DependencyDocResolver } from "./expand.js"
 import type {
   AliasItem,
@@ -220,10 +221,20 @@ function convertItem(item: IscItem): Item {
       return r
     }
     case "function": {
-      // Functions in non-`to` positions are unexpected — fall back to alias
-      // lookup so a clear error surfaces at runtime.
-      const r: AliasItem = { kind: "alias", name: item.name }
-      return r
+      // `any_character` is the primitive spelled as a function atom
+      // (actions.ts lowers it this way; rs lowers it to the
+      // any_character stdlib alias) — keep the alias path.
+      if (item.name === "any_character") {
+        const r: AliasItem = { kind: "alias", name: item.name }
+        return r
+      }
+      // WO19 G6 item 2: a fn literal in FROM position is map-logic
+      // damage — ruby raises (canon), rs raises at build. The former
+      // alias-fallback degraded to a misleading "Alias <name> not
+      // found"; raise the named error at compile instead.
+      throw new MapLogicError(
+        `function literal "${item.name}" in from position (fn literals are directives or to-funcalls, not from values)`,
+      )
     }
     case "alias_ref": {
       const r: AliasItem = { kind: "alias", name: item.name }

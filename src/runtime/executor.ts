@@ -28,6 +28,9 @@ import {
   separate,
   compose,
   decompose,
+  reverse,
+  strip,
+  swapcase,
 } from "../stdlib.js"
 
 type RuleKind = Rule["kind"]
@@ -42,6 +45,12 @@ const BUILTIN_FUNCTIONS: Record<string, (input: string, opts?: Record<string, un
     downcase,
     upcase,
     title_case: (i, o) => titleCase(i, o ?? {}),
+    // WO19 G6: the three new fn literals execute as directives and
+    // inline to-funcalls with the plain String semantics of ruby
+    // Stdlib::Functions (String#reverse / String#strip / String#swapcase).
+    reverse,
+    strip,
+    swapcase,
     separate: (i, o) => separate(i, o ?? {}),
     compose,
     decompose,

@@ -203,6 +203,38 @@ export function decompose(input: string): string {
 }
 
 /**
+ * Reverse a string by code point. Maps to
+ * `Interscript.functions.reverse` (ruby String#reverse) — WO19 G6.
+ */
+export function reverse(input: string): string {
+  return [...input].reverse().join("")
+}
+
+/**
+ * Trim leading/trailing whitespace. Maps to `Interscript.functions.strip`
+ * (ruby String#strip: the ASCII whitespace + NUL set, both ends) — WO19 G6.
+ */
+export function strip(input: string): string {
+  // ruby String#strip's character set: NUL, tab, LF, VT, FF, CR, space.
+  return input.replace(/^[\0\t\n\v\f\r ]+/, "").replace(/[\0\t\n\v\f\r ]+$/, "")
+}
+
+/**
+ * Swap the case of every character (full Unicode mapping, matching
+ * toUpperCase/toLowerCase semantics). Maps to
+ * `Interscript.functions.swapcase` (ruby String#swapcase) — WO19 G6.
+ */
+export function swapcase(input: string): string {
+  let out = ""
+  for (const ch of input) {
+    const lo = ch.toLowerCase()
+    const up = ch.toUpperCase()
+    out += lo !== ch ? lo : up !== ch ? up : ch
+  }
+  return out
+}
+
+/**
  * Megaregexp parallel replace — Ruby's fallback for parallel blocks
  * where any rule has `before`/`after`/`not_before`/`not_after` constraints.
  *
