@@ -35,9 +35,26 @@ export interface IscStage {
   readonly body: readonly IscStageItem[]
 }
 
+/**
+ * ISC-WF-1 W1/W2 — `use <ident>` (or `use <alias>.<ident>`), optionally
+ * with an `override { ... }` block. Resolved by expandDocument() at
+ * compile time; never reaches the IR.
+ */
+export interface IscUseItem {
+  readonly kind: "use"
+  readonly name: string
+  readonly dependency?: string
+  readonly override?: readonly (IscRule | IscUseItem)[]
+}
+
 export type IscStageItem =
-  | { kind: "parallel"; rules: readonly IscRule[] }
-  | { kind: "sequence"; rules: readonly IscRule[] }
+  /**
+   * WO18 G5 (§3.2): items inside a parallel/sequence block participate in
+   * that block's single pass — the block's rule list may carry `use`
+   * items, which expandDocument() flattens in position.
+   */
+  | { kind: "parallel"; rules: readonly (IscRule | IscUseItem)[] }
+  | { kind: "sequence"; rules: readonly (IscRule | IscUseItem)[] }
   | { kind: "bare_rule"; rule: IscRule }
   | { kind: "run"; dependency?: string; stage: string }
   | { kind: "separate"; separator?: IscItem }
@@ -45,17 +62,7 @@ export type IscStageItem =
   | { kind: "decompose" }
   | { kind: "string_case"; op: string }
   | { kind: "funcall"; name: string; kwargs: Readonly<Record<string, string>> }
-  /**
-   * ISC-WF-1 W1/W2 — `use <ident>` (or `use <alias>.<ident>`), optionally
-   * with an `override { ... }` block. Resolved by expandDocument() at
-   * compile time; never reaches the IR.
-   */
-  | {
-      kind: "use"
-      name: string
-      dependency?: string
-      override?: readonly IscRule[]
-    }
+  | IscUseItem
 
 export interface IscRule {
   readonly from: IscItem

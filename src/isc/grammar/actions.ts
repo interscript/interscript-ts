@@ -12,7 +12,15 @@
  * decide to align the runtimes.
  */
 
-import type { IscDocument, IscItem, IscRule, IscStage, IscStageItem, IscTest } from "../types.js"
+import type {
+  IscDocument,
+  IscItem,
+  IscRule,
+  IscStage,
+  IscStageItem,
+  IscTest,
+  IscUseItem,
+} from "../types.js"
 import { IscParseError } from "../types.js"
 import { Slice } from "./peg.js"
 
@@ -269,14 +277,37 @@ export class TreeToDocument {
     return Array.isArray(v) ? v : [v]
   }
 
-  /** rule_items for parallel/sequence/override blocks: skip comment/noop rows. */
-  private ruleList(trees: Tree[]): IscRule[] {
+  /**
+   * rule_items for parallel/sequence/override blocks: skip comment/noop
+   * rows; `use` directives splice into the pass (canonical grammar
+   * rule_line — expand() resolves them in place, spec §3.2).
+   */
+  private ruleList(trees: Tree[]): (IscRule | IscUseItem)[] {
     return trees
       .filter((t) => {
         const h = hash(t)
         return h.comment === undefined && h.noop === undefined
       })
-      .map((t) => this.rule(t))
+      .map((t) => {
+        const h = hash(t)
+        return h.use !== undefined ? this.useItem(h) : this.rule(t)
+      })
+  }
+
+  /** A captured use_directive tree lowered to the parse-level item. */
+  private useItem(h: Hash): IscUseItem {
+    const u = hash(h.use)
+    const name = identifier(hash(u.use_alias))
+    const qualified = u.qualified_name !== undefined ? identifier(u.qualified_name) : undefined
+    const overrides =
+      u.use_overrides !== undefined ? this.ruleList(array(u.use_overrides)) : undefined
+    // Hand parser: `use a.b` names the ruleset b, reached through dependency a.
+    return {
+      kind: "use",
+      name: qualified ?? name,
+      ...(qualified !== undefined ? { dependency: name } : {}),
+      ...(overrides !== undefined ? { override: overrides } : {}),
+    }
   }
 
   // -- stage bodies ---------------------------------------------------------
@@ -340,18 +371,7 @@ export class TreeToDocument {
         continue
       }
       if (h.use !== undefined) {
-        const u = hash(h.use)
-        const name = identifier(hash(u.use_alias))
-        const qualified = u.qualified_name !== undefined ? identifier(u.qualified_name) : undefined
-        const overrides =
-          u.use_overrides !== undefined ? this.ruleList(array(u.use_overrides)) : undefined
-        // Hand parser: `use a.b` names the ruleset b, reached through dependency a.
-        out.push({
-          kind: "use",
-          name: qualified ?? name,
-          ...(qualified !== undefined ? { dependency: name } : {}),
-          ...(overrides !== undefined ? { override: overrides } : {}),
-        })
+        out.push(this.useItem(h))
         continue
       }
       throw new Error(`unknown stage item ${JSON.stringify(Object.keys(h))}`)
