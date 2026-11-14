@@ -185,9 +185,9 @@ describe("parseIsc — when guard suffix (W3)", () => {
   })
 
   it("rejects the outside-form when suffix on a block-form rule", () => {
-    expect(() =>
-      parseIsc(minimalWrap(`stage main { sub { from "a" to "x" } when kur }`)),
-    ).toThrow(IscParseError)
+    expect(() => parseIsc(minimalWrap(`stage main { sub { from "a" to "x" } when kur }`))).toThrow(
+      IscParseError,
+    )
   })
 
   it("leaves unguarded rules untouched", () => {
