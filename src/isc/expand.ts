@@ -73,7 +73,6 @@ interface ExpandScope {
 function expandItems(
   items: readonly IscStageItem[],
   scope: ExpandScope,
-  inBlock = false,
 ): IscStageItem[] {
   const out: IscStageItem[] = []
   for (const item of items) {
