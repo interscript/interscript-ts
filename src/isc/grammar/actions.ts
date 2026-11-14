@@ -155,21 +155,14 @@ export class TreeToDocument {
       else if (h.u_lone !== undefined) out += "U"
       else if (h.unicode !== undefined) {
         const digits = (h.unicode as Slice).content
-        // DEVIATION (hand-parser parity): the grammar cannot distinguish
-        // `\uXXXX` from `\UXXXX` (both captures are named :unicode), but the
-        // hand parser only decodes lowercase \u and renders a capital \U as
-        // a literal "U" followed by the raw digits. The slice offset tells
-        // us which spelling the source used (the escape letter sits one
-        // position before the digits). Six corpus maps use `\U`; mirroring
-        // the hand parser keeps their documents — and therefore their
-        // transliteration output — byte-identical across the swap. The ruby
-        // artifact parser decodes both spellings; aligning ts/py/ruby on the
-        // grammar behavior is an owner decision, not this parser's to make.
-        if (this.src.charCodeAt((h.unicode as Slice).offset - 1) === 0x55) {
-          out += "U" + digits
-        } else {
-          out += String.fromCharCode(parseInt(digits, 16))
-        }
+        // WO19 G6 ruling: BOTH escape spellings decode. The former hand
+        // parser only decoded lowercase \u and rendered a capital \U as a
+        // literal "U" followed by the raw digits, so gki-bel's
+        // `sub "\U040E" "Ŭ"` carried the from-value "U040E" and the row
+        // never fired. The grammar captures both spellings under :unicode
+        // and the tree carries the decoded code point (ruby/rs always
+        // decoded both).
+        out += String.fromCodePoint(parseInt(digits, 16))
       } else {
         throw new Error(`unknown string part ${JSON.stringify(Object.keys(h))}`)
       }

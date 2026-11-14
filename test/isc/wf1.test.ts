@@ -175,10 +175,19 @@ describe("parseIsc — when guard suffix (W3)", () => {
     expect(rule.rule.when).toEqual(["kur"])
   })
 
-  it("parses the suffix on a block-form rule", () => {
-    const doc = parseIsc(minimalWrap(`stage main { sub { from "a" to "x" } when kur }`))
+  it("parses the guard inside a block-form rule (canonical placement)", () => {
+    // WO19 G6 item 5: canonical rs binds the when guard inside the
+    // braces; ruby parses the inside form only. The former ts/py
+    // outside-form extension (`} when kur`) is retired.
+    const doc = parseIsc(minimalWrap(`stage main { sub { from "a" to "x" when kur } }`))
     const rule = doc.stages[0]!.body[0] as Extract<IscStageItem, { kind: "bare_rule" }>
     expect(rule.rule.when).toEqual(["kur"])
+  })
+
+  it("rejects the outside-form when suffix on a block-form rule", () => {
+    expect(() =>
+      parseIsc(minimalWrap(`stage main { sub { from "a" to "x" } when kur }`)),
+    ).toThrow(IscParseError)
   })
 
   it("leaves unguarded rules untouched", () => {

@@ -10,6 +10,7 @@ import { describe, it, expect } from "vitest"
 import { parseIsc } from "../../src/isc/parser.ts"
 import { iscToCompiledMap } from "../../src/isc/converter.ts"
 import { IscParseError } from "../../src/isc/types.ts"
+import type { IscStageItem } from "../../src/isc/types.ts"
 
 function minimalWrap(body: string): string {
   return `system "TEST:test:Latn:Latn:2026" {\n${body}\n}`
@@ -436,6 +437,16 @@ describe("parseIsc — items", () => {
   it("parses unicode escapes", () => {
     const doc = parseIsc(minimalWrap(`aliases { x = "\\u00e9" }`))
     expect(doc.aliases[0]?.value).toEqual({ type: "string", value: "é" })
+  })
+
+  it("decodes the capital \\UXXXX escape spelling (WO19 G6 item 4)", () => {
+    // The gki-bel shape: `sub "\U040E" "Ŭ"` — the former hand parser
+    // carried the from as the literal text "U040E" and the row never
+    // fired. Both spellings decode now (ruby/rs always did).
+    const doc = parseIsc(minimalWrap(`stage main { sub "\\U040E" "Ŭ" }`))
+    const rule = doc.stages[0]!.body[0] as Extract<IscStageItem, { kind: "bare_rule" }>
+    expect(rule.rule.from).toEqual({ type: "string", value: "Ў" })
+    expect(rule.rule.to).toEqual({ type: "string", value: "Ŭ" })
   })
 
   it("parses none", () => {
