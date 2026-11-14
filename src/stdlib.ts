@@ -170,16 +170,30 @@ export function upcase(input: string): string {
 }
 
 /**
- * Capitalise each word; honours custom word separator.
- * Maps to `Interscript.functions.title_case`.
+ * Title-case — `Interscript::Stdlib::Functions.title_case` / rs
+ * `title_case` parity: upcase the FIRST character of the string, then
+ * the character following each word separator. Other characters are
+ * untouched (ruby `gsub(/^(.)/)` + `gsub(/#{sep}(.)/)` — notably NOT
+ * full per-word title-casing).
  */
 export function titleCase(input: string, opts: { wordSeparator?: string } = {}): string {
   const sep = opts.wordSeparator ?? " "
-  if (sep === "") return input.charAt(0).toUpperCase() + input.slice(1).toLowerCase()
-  return input
-    .split(sep)
-    .map((w) => (w.length === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
-    .join(sep)
+  const chars = Array.from(input)
+  if (chars.length > 0) chars[0] = chars[0]!.toUpperCase()
+  if (sep === "") return chars.join("")
+  const sepChars = Array.from(sep)
+  const out: string[] = []
+  let i = 0
+  while (i < chars.length) {
+    if (i + sepChars.length < chars.length && sepChars.every((c, k) => chars[i + k] === c)) {
+      out.push(sep, chars[i + sepChars.length]!.toUpperCase())
+      i += sepChars.length + 1
+    } else {
+      out.push(chars[i]!)
+      i += 1
+    }
+  }
+  return out.join("")
 }
 
 /**
@@ -189,6 +203,18 @@ export function titleCase(input: string, opts: { wordSeparator?: string } = {}):
 export function separate(input: string, opts: { separator?: string } = {}): string {
   const sep = opts.separator ?? " "
   return input.split("").join(sep)
+}
+
+/**
+ * Remove every separator (the inverse of `separate`).
+ * Maps to `Interscript.functions.unseparate` — used by reverse mode
+ * (`Stdlib.reverse_function` maps separate <-> unseparate). Split
+ * semantics mirror rs/ruby: trailing empty segments survive the split
+ * and rejoin (no trimming).
+ */
+export function unseparate(input: string, opts: { separator?: string } = {}): string {
+  const sep = opts.separator ?? " "
+  return input.split(sep).join("")
 }
 
 /**

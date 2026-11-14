@@ -26,6 +26,7 @@ import {
   upcase,
   titleCase,
   separate,
+  unseparate,
   compose,
   decompose,
 } from "../stdlib.js"
@@ -43,6 +44,8 @@ const BUILTIN_FUNCTIONS: Record<string, (input: string, opts?: Record<string, un
     upcase,
     title_case: (i, o) => titleCase(i, o ?? {}),
     separate: (i, o) => separate(i, o ?? {}),
+    // Reverse-mode counterpart of `separate` (Stdlib.reverse_function).
+    unseparate: (i, o) => unseparate(i, o ?? {}),
     compose,
     decompose,
   }

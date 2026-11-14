@@ -21,6 +21,7 @@ import {
   SystemConversionError,
 } from "./errors.js"
 import { detectInMaps, detectInMapsAsync } from "./detector.js"
+import { reverseMap, reverseName } from "./reverse.js"
 
 export {
   InterscriptError,
@@ -76,6 +77,7 @@ export { parseIsc } from "./isc/parser.js"
 export { IscParseError, IscLoadError } from "./isc/types.js"
 export { iscToCompiledMap, type IscToCompiledMapOptions } from "./isc/converter.js"
 export { expandDocument, requiredDependencyDocs, type DependencyDocResolver } from "./isc/expand.js"
+export { reverseName, reverseMap } from "./reverse.js"
 export { setRababaConfig, resetRababaConfigs, type RababaConfigEntry } from "./stdlib/ml.js"
 
 export interface InterscriptConfig {
@@ -99,8 +101,23 @@ class InterscriptRuntime {
   /**
    * Pre-load a map so subsequent transliterate() calls are fast.
    * Throws MapNotFoundError if the map can't be located.
+   *
+   * Carries the ruby `Interscript::DSL.parse` reverse-name fallback: a
+   * missing map whose reverse-named sibling exists loads that sibling
+   * and returns its reverse (cached under the requested code).
    */
   loadMap(systemCode: SystemCode): CompiledMap {
+    try {
+      return this.loadMapWithDeps(systemCode)
+    } catch (e) {
+      if (e instanceof MapNotFoundError) return this.loadReversedFallback(systemCode, e)
+      throw e
+    }
+  }
+
+  /** Load a map and warm its direct dependencies (shared by both load
+   * paths so the sync executor can resolve them without awaiting). */
+  private loadMapWithDeps(systemCode: SystemCode): CompiledMap {
     const map = this.loader.load(systemCode)
     for (const dep of map.dependencies) {
       try {
@@ -116,6 +133,27 @@ class InterscriptRuntime {
   }
 
   /**
+   * Ruby DSL.parse fallback: `locate(map)` failed, so try
+   * `reverse_name(map)` and return the reversed document. Re-raises the
+   * original error when the fallback name is identical or also missing.
+   */
+  private loadReversedFallback(systemCode: SystemCode, original: MapNotFoundError): CompiledMap {
+    const fallback = reverseName(systemCode)
+    if (fallback === systemCode) throw original
+    let forward: CompiledMap
+    try {
+      forward = this.loadMapWithDeps(fallback)
+    } catch (e) {
+      if (e instanceof MapNotFoundError) throw original
+      throw e
+    }
+    const reversed = reverseMap(forward)
+    // Ruby caches the reversed document under the requested name.
+    this.loader.register(systemCode, reversed)
+    return reversed
+  }
+
+  /**
    * Async pre-load. Required when async strategies (HTTP) are configured
    * and the map isn't already cached.
    *
@@ -123,6 +161,29 @@ class InterscriptRuntime {
    * execution path can resolve deps without awaiting.
    */
   async loadMapAsync(systemCode: SystemCode): Promise<CompiledMap> {
+    try {
+      return await this.loadMapAsyncWithDeps(systemCode)
+    } catch (e) {
+      if (e instanceof MapNotFoundError) {
+        // Same reverse-name fallback as the sync path (ruby DSL.parse).
+        const fallback = reverseName(systemCode)
+        if (fallback !== systemCode) {
+          try {
+            const forward = await this.loadMapAsyncWithDeps(fallback)
+            const reversed = reverseMap(forward)
+            this.loader.register(systemCode, reversed)
+            return reversed
+          } catch (e2) {
+            if (e2 instanceof MapNotFoundError) throw e
+            throw e2
+          }
+        }
+      }
+      throw e
+    }
+  }
+
+  private async loadMapAsyncWithDeps(systemCode: SystemCode): Promise<CompiledMap> {
     const map = await this.loader.loadAsync(systemCode)
     // Recursively load every transitive dep. The synchronous executor
     // calls loader.load() during execution and can't await async
@@ -194,6 +255,45 @@ class InterscriptRuntime {
         { cause: e },
       )
     }
+  }
+
+  /**
+   * Reverse-mode transliteration — the `iscrs reverse` analog: load the
+   * map, reverse it (mirroring rs `reverse_document`, which recursively
+   * reverses embedded dependency documents — here the whole dependency
+   * closure is reversed and served to execution), then run one stage of
+   * the reversed document.
+   */
+  reverse(systemCode: SystemCode, input: string, stage?: string, language?: string): string {
+    const map = this.loadMap(systemCode)
+
+    // rs: dependency documents reverse with the parent. Memoized
+    // closure walk — cycles recurse in rs/ruby too, only repeat work
+    // is skipped here.
+    const reversedDeps = new Map<SystemCode, CompiledMap>()
+    const collect = (m: CompiledMap): void => {
+      for (const dep of m.dependencies) {
+        if (reversedDeps.has(dep)) continue
+        let depMap: CompiledMap
+        try {
+          depMap = this.loader.load(dep)
+        } catch (e) {
+          if (e instanceof MapNotFoundError) throw new DependencyMissingError(dep)
+          throw e
+        }
+        reversedDeps.set(dep, reverseMap(depMap))
+        collect(depMap)
+      }
+    }
+    collect(map)
+
+    const reversed = reverseMap(map)
+    // Serve the reversed dependency documents under their original
+    // names (run rules reference the forward names).
+    const depLoader = new MapLoader([])
+    for (const [code, depReversed] of reversedDeps) depLoader.register(code, depReversed)
+    const stageName = stage ?? this.defaultStage
+    return executeStage(reversed, stageName, input, depLoader, language)
   }
 
   /** List all maps currently loaded in the cache. */
@@ -268,6 +368,20 @@ export function transliterateAsync(
   language?: string,
 ): Promise<string> {
   return runtime().transliterateAsync(systemCode, input, stage, language)
+}
+
+/**
+ * Public API — reverse-mode transliteration (`iscrs reverse`): load
+ * `systemCode`, reverse the document (dependencies reverse with the
+ * parent), and transliterate `input` through it.
+ */
+export function reverse(
+  systemCode: SystemCode,
+  input: string,
+  stage?: string,
+  language?: string,
+): string {
+  return runtime().reverse(systemCode, input, stage, language)
 }
 
 /** Public API — mirrors Interscript.load. */
