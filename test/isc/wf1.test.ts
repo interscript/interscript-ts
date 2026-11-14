@@ -320,6 +320,71 @@ describe("expandDocument — cycle and resolution errors (§3.2, §6.4)", () => 
 })
 
 // ---------------------------------------------------------------------------
+// WO18 G5 — use inside parallel/sequence blocks (§3.2): the expansion
+// inherits the enclosing pass structure — the target's rule content
+// flattens into the enclosing collection; non-rule items (funcalls,
+// stage runs) cannot join a pass — named load error.
+// ---------------------------------------------------------------------------
+
+describe("use inside parallel/sequence blocks (§3.2)", () => {
+  const inSeq = minimalWrap(
+    `ruleset r1 { parallel { sub "a" "1" } }\n` +
+      `stage main { sequence { use r1\n  sub "b" "2" } }`,
+  )
+  const inPar = minimalWrap(
+    `ruleset r1 { parallel { sub "a" "1" } }\n` +
+      `stage main { parallel { use r1\n  sub "b" "2" } }`,
+  )
+  const inParOvr = minimalWrap(
+    `ruleset tbl { parallel { sub "a" "A1"\n  sub "b" "B" } }\n` +
+      `stage main { parallel { use tbl override { sub "a" "A2" } } }`,
+  )
+  const flatSeq = minimalWrap(
+    `ruleset tbl { parallel { sub "a" "b"\n  sub "c" "d" } }\n` +
+      `stage main { sequence { use tbl\n  sub "e" "E" } }`,
+  )
+
+  it("splices the used ruleset's rules into a sequence block, in position", () => {
+    // mirrors maps probe tst-use-inseq (rs expects "12")
+    expect(run(inSeq, "ab")).toBe("12")
+  })
+
+  it("joins the pass: rules from a used ruleset flatten into the enclosing parallel", () => {
+    // one simultaneous pass: a→1 and b→2 together
+    expect(run(inPar, "ab")).toBe("12")
+  })
+
+  it("flattens a used ruleset's parallel block into the sequence's rule list", () => {
+    const expanded = expandDocument(parseIsc(flatSeq))
+    const seq = expanded.stages[0]!.body[0] as Extract<IscStageItem, { kind: "sequence" }>
+    expect(trace([seq])).toEqual(["sequence[a->b, c->d, e->E]"])
+  })
+
+  it("merges an override block per-rule on the flat list (child-wins)", () => {
+    // replaced row joins the same single pass, after the kept rows
+    expect(run(inParOvr, "xa xb")).toBe("xA2 xB")
+  })
+
+  it("rejects a non-rule target (funcall in the used ruleset) with a named error", () => {
+    const doc = parseIsc(
+      minimalWrap(`ruleset tbl { sub "a" "A"\n  upcase }\nstage main { parallel { use tbl } }`),
+    )
+    expect(() => expandDocument(doc)).toThrow(IscLoadError)
+    expect(() => expandDocument(doc)).toThrow(/cannot join the pass/)
+  })
+
+  it("rejects a non-rule target reached through nested use", () => {
+    const doc = parseIsc(
+      minimalWrap(
+        `ruleset tbl { sub "a" "A"\n  upcase }\n` +
+          `ruleset wrap { use tbl }\nstage main { sequence { use wrap } }`,
+      ),
+    )
+    expect(() => expandDocument(doc)).toThrow(/cannot join the pass/)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // W2 — override merge semantics (§4.2)
 // ---------------------------------------------------------------------------
 

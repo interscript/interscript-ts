@@ -6,6 +6,14 @@
  * ruleset's items at its position (a macro expansion, not a sub-run).
  * The compiled IR stays flat — expanded rules only, no ruleset nodes.
  *
+ * WO18 G5 (§3.2): `use` may also sit INSIDE a parallel/sequence block.
+ * Items inside a block participate in that block's single pass, so the
+ * expansion inherits the enclosing pass structure — the referenced
+ * ruleset's rule content flattens into the enclosing collection. A
+ * referenced ruleset carrying non-rule items (funcalls, stage runs)
+ * cannot join a pass — named load error. Overrides merge per-rule on
+ * the flat list (child-wins; the rows land at the expansion tail).
+ *
  * Merge semantics (§4.2), at each expansion site:
  *   1. A rule of the expansion is REPLACED if an override row exists with
  *      the same from under byte-exact equality (no normalization). If
@@ -18,7 +26,14 @@
  * error (IscLoadError, §3.2 / §6.4).
  */
 
-import type { IscDocument, IscItem, IscRule, IscStage, IscStageItem } from "./types.js"
+import type {
+  IscDocument,
+  IscItem,
+  IscRule,
+  IscStage,
+  IscStageItem,
+  IscUseItem,
+} from "./types.js"
 import { IscLoadError } from "./types.js"
 
 /** Resolves a dependency target (system code) to its parsed document. */
@@ -55,24 +70,42 @@ interface ExpandScope {
   readonly chain: readonly string[]
 }
 
-function expandItems(items: readonly IscStageItem[], scope: ExpandScope): IscStageItem[] {
+function expandItems(
+  items: readonly IscStageItem[],
+  scope: ExpandScope,
+  inBlock = false,
+): IscStageItem[] {
   const out: IscStageItem[] = []
   for (const item of items) {
     if (item.kind === "use") {
       out.push(...expandUse(item, scope))
+    } else if (item.kind === "parallel" || item.kind === "sequence") {
+      // WO18 G5 (§3.2): block bodies are rule_line lists — `use` items
+      // inside them expand flat into the block's rule list.
+      out.push({ ...item, rules: item.rules.flatMap((r) => expandBlockRow(r, scope)) })
     } else {
-      // parallel/sequence blocks contain plain rules only (`use` is a
-      // stage-level item), so no recursion into blocks is needed.
       out.push(item)
     }
   }
   return out
 }
 
-function expandUse(
+const isUseItem = (row: IscRule | IscUseItem): row is IscUseItem => !("from" in row)
+
+/** One rule_line row of a parallel/sequence block (§3.2): `use` rows
+ * flatten the referenced ruleset's rules into the block; rule rows pass
+ * through. Both return arrays so the caller can splice uniformly. */
+function expandBlockRow(row: IscRule | IscUseItem, scope: ExpandScope): IscRule[] {
+  return isUseItem(row) ? expandUseFlat(row, scope) : [row]
+}
+
+/** Shared target resolution for a `use` site: owner document, cycle
+ * guard, memo ruleset lookup; returns the target's structural expansion
+ * and the inner scope its nested uses resolve against. */
+function resolveRulesetExpansion(
   item: Extract<IscStageItem, { kind: "use" }>,
   scope: ExpandScope,
-): IscStageItem[] {
+): { expanded: IscStageItem[]; inner: ExpandScope } {
   // Resolve the owning document: same map, or a declared dependency.
   let owner = scope.doc
   let ownerKey = scope.docKey
@@ -112,14 +145,84 @@ function expandUse(
     resolveDep: scope.resolveDep,
     chain: [...scope.chain, key],
   }
-  const expanded = expandItems(ruleset.body, inner)
+  return { expanded: expandItems(ruleset.body, inner), inner }
+}
 
-  // W2 — use with override (§4.2): partition the full expansion
-  // (including nested expansions) by exact from-equality.
-  if (item.override && item.override.length > 0) {
-    return applyOverride(expanded, item.override)
+/** Stage/ruleset-body-position `use` (§3.1): the expansion splices the
+ * target's items in position, document order, override rows merged
+ * structurally (§4.2, incl. the §4.2.6 trailing-parallel join). */
+function expandUse(
+  item: Extract<IscStageItem, { kind: "use" }>,
+  scope: ExpandScope,
+): IscStageItem[] {
+  const { expanded, inner } = resolveRulesetExpansion(item, scope)
+  if (item.override !== undefined && item.override.length > 0) {
+    return applyOverride(expanded, expandOverrideRows(item.override, inner))
   }
   return expanded
+}
+
+/** WO18 G5 — block-position `use` (§3.2): inside a block the expansion
+ * inherits the enclosing pass structure — the target's rule content
+ * flattens into the pass; overrides merge per-rule on the flat list
+ * (child-wins, tail rows). */
+function expandUseFlat(
+  item: Extract<IscStageItem, { kind: "use" }>,
+  scope: ExpandScope,
+): IscRule[] {
+  const { expanded, inner } = resolveRulesetExpansion(item, scope)
+  let rules = flattenPassItems(expanded)
+  if (item.override !== undefined && item.override.length > 0) {
+    rules = mergeOverrideRules(rules, expandOverrideRows(item.override, inner))
+  }
+  return rules
+}
+
+/**
+ * WO18 G5 (§3.2): flatten a structural expansion into the ordered rule
+ * list of an enclosing pass. Pass blocks contribute their (already
+ * expanded) rules in position; non-rule items (funcalls, stage runs)
+ * cannot join a pass — named load error (interscript-rs flatten_rules).
+ */
+function flattenPassItems(items: readonly IscStageItem[]): IscRule[] {
+  const out: IscRule[] = []
+  for (const item of items) {
+    if (item.kind === "parallel" || item.kind === "sequence") {
+      // expandItems() already flattened `use` rows inside blocks, so the
+      // list is rules-only at this point.
+      out.push(...(item.rules as readonly IscRule[]))
+    } else if (item.kind === "bare_rule") {
+      out.push(item.rule)
+    } else {
+      throw new IscLoadError(
+        "use inside a parallel/sequence block: the referenced ruleset carries " +
+          "non-rule items (funcalls/stage runs) that cannot join the pass",
+      )
+    }
+  }
+  return out
+}
+
+/** Override rows are rule_line items, so they may themselves be `use`
+ * directives (rs extract_rule_list recursion); their content flattens
+ * into the override rule list. */
+function expandOverrideRows(
+  rows: readonly (IscRule | IscUseItem)[],
+  scope: ExpandScope,
+): IscRule[] {
+  return rows.flatMap((row) => (isUseItem(row) ? expandUseFlat(row, scope) : [row]))
+}
+
+/**
+ * §4.2 merge over a FLAT rule list (the block-position use): matching
+ * rules drop wherever they sit (child-wins on exact from-equality);
+ * the override rows land at the expansion tail. No trailing-parallel
+ * join here — the caller re-wraps the list into the enclosing block.
+ */
+function mergeOverrideRules(rules: readonly IscRule[], overrides: readonly IscRule[]): IscRule[] {
+  const overrideKeys = new Set(overrides.map(ruleFromKey))
+  const kept = rules.filter((r) => !overrideKeys.has(ruleFromKey(r)))
+  return [...kept, ...overrides]
 }
 
 /**
@@ -142,7 +245,8 @@ function applyOverride(
     if (item.kind === "bare_rule") {
       if (keepRule(item.rule)) kept.push(item)
     } else if (item.kind === "parallel" || item.kind === "sequence") {
-      kept.push({ ...item, rules: item.rules.filter(keepRule) })
+      // post-expansion block rule lists are rules-only
+      kept.push({ ...item, rules: (item.rules as readonly IscRule[]).filter(keepRule) })
     } else {
       kept.push(item)
     }
@@ -211,6 +315,15 @@ export function requiredDependencyDocs(doc: IscDocument): string[] {
       if (item.kind === "use" && item.dependency) {
         const target = aliases.get(item.dependency)
         if (target) targets.add(target)
+      } else if (item.kind === "parallel" || item.kind === "sequence") {
+        // `use` rows inside blocks may carry dependency qualifiers too
+        for (const row of item.rules) {
+          // IscRule is structural (no kind tag): shape-discriminate
+          if (!("from" in row) && row.dependency) {
+            const target = aliases.get(row.dependency)
+            if (target) targets.add(target)
+          }
+        }
       }
     }
   }

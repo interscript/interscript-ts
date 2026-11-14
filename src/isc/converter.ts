@@ -123,11 +123,15 @@ function convertStageItem(item: IscStageItem, resolveDep: DepResolver): Rule {
         `unexpanded use "${item.dependency ? `${item.dependency}.` : ""}${item.name}" reached the converter`,
       )
     case "parallel": {
-      const r: ParallelRule = { kind: "parallel", rules: item.rules.map(convertRule) }
+      // Post-expansion, block rule lists are rules only (WO18 G5: `use`
+      // rows flattened during expandDocument()).
+      const rules = item.rules as readonly IscRule[]
+      const r: ParallelRule = { kind: "parallel", rules: rules.map(convertRule) }
       return r
     }
     case "sequence": {
-      const r: SequentialRule = { kind: "sequential", rules: item.rules.map(convertRule) }
+      const rules = item.rules as readonly IscRule[]
+      const r: SequentialRule = { kind: "sequential", rules: rules.map(convertRule) }
       return r
     }
     case "bare_rule":
