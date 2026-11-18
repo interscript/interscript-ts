@@ -220,7 +220,7 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
         }))
         .sort((a, b) => b.len - a.len || a.idx - b.idx)
 
-      const megaRules: MegaregexpRule[] = sorted.map(({ rule: r }) => {
+      const megaRules: MegaregexpRule[] = sorted.flatMap(({ rule: r }) => {
         const from = compileItem(r.from!, ctx)
         // Constraints compile in CLASS context (charset aliases resolve
         // per-character — mirrors RS materialize_class).
@@ -236,6 +236,15 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
           after ? `(?=${after})` : "",
           notAfter ? `(?!${notAfter})` : "",
         ].join("")
+        // A from-pattern backreference to a group the pattern does not
+        // itself define (reversed rules re-reference capture groups
+        // their reversal hoisted away — the WO20 reverse-golden
+        // bgnpcgn-zho family) can never match: RS match_item fails the
+        // ref on an unparticipated group. Under the megaregexp's
+        // wrapper groups the ref would instead bind an earlier rule's
+        // wrapper slot and fire spuriously. Drop the rule, mirroring
+        // the RS never-matches semantics.
+        if (backrefWithoutGroup(pattern)) return []
 
         const replacement = buildReplacement(r.to, ctx)
         const replaceFn =
@@ -243,7 +252,7 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
             ? (match: string, _groups: (string | undefined)[]) =>
                 resolveTemplate(replacement, match, _groups as string[])
             : replacement
-        return { pattern, replace: replaceFn }
+        return [{ pattern, replace: replaceFn }]
       })
 
       ctx.current = parallelMegaregexp(ctx.current, megaRules)
@@ -304,10 +313,31 @@ function executeSubRule(rule: SubRule, ctx: ExecutionContext): void {
           // String.replace replacement strings.
           const tmpl = replacement
           return (match: string, ...args: unknown[]) =>
-            resolveTemplate(tmpl, match, args as string[])
+            // args = [p1..pN, offset, fullString] — the trailing two
+            // slots are NOT capture groups. A reversed rule whose `to`
+            // references a group the reversed pattern no longer has
+            // ($1 over a zero-group pattern — the WO20 reverse-golden
+            // div-Thaa family) must fall back to the whole match like
+            // rs/py, never read the offset.
+            resolveTemplate(tmpl, match, args.slice(0, -2) as string[])
         })()
       : replacement,
   )
+}
+
+/**
+ * Does this rule pattern carry a `\N` backreference to a capture group
+ * the pattern itself does not define? Machine-generated rule patterns
+ * only: capture groups open with `(` not followed by `?` (lookarounds
+ * and `(?:` are not capture groups). Such a rule can never match (RS
+ * match_item fails a ref on an unparticipated group), so a megaregexp
+ * pass drops it instead of binding an earlier wrapper slot (WO20
+ * reverse-golden bgnpcgn-zho family).
+ */
+function backrefWithoutGroup(pattern: string): boolean {
+  const groupCount = (pattern.match(/\((?!\?)/g) ?? []).length
+  const refs = pattern.match(/\\(\d+)/g) ?? []
+  return refs.some((r) => parseInt(r.slice(1), 10) > groupCount)
 }
 
 /**
@@ -319,7 +349,12 @@ function executeSubRule(rule: SubRule, ctx: ExecutionContext): void {
 function resolveTemplate(template: string, match: string, groups: string[]): string {
   return template.replace(/\$(\d+)/g, (_, n: string) => {
     const idx = parseInt(n, 10)
-    return groups[idx - 1] ?? match
+    // Ruby gsub semantics (rs decode_replacement parity): a capture
+    // reference whose group did not participate — or does not exist in
+    // the pattern at all (reversed rules re-reference groups their
+    // reversed pattern lost) — inserts the EMPTY string, never the
+    // whole match (the WO20 reverse-golden hin-Deva family).
+    return groups[idx - 1] ?? ""
   })
 }
 
