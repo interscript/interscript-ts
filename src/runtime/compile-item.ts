@@ -117,11 +117,17 @@ export function compileItem(item: Item, ctx: ExecutionContext, classCtx = false)
     }
 
     case "repeat": {
-      const inner = compileItem(item.item, ctx).re
+      const inner = compileItem(item.item, ctx)
       const { min, max } = item
       const maxVal = max === null ? Infinity : max
       const quant = maxVal === Infinity ? (min === 0 ? "*" : "+") : `{${min},${maxVal}}`
-      return { re: `(?:${inner})${quant}`, literal: "" }
+      // Replacement-position collapse mirrors Ruby `Repeat#nth_string`
+      // (= data.nth_string): a maybe/some contributes its inner data's
+      // string, not the quantifier and not an empty string. The
+      // empty-literal reading dropped the restored segment on reversed
+      // rules whose `to` carries a maybe (the WO20 reverse-golden
+      // bgnpcgn-ara-1956 / hin-Deva / odni-ara / yaghoubi families).
+      return { re: `(?:${inner.re})${quant}`, literal: inner.literal }
     }
 
     case "stage_ref":

@@ -179,7 +179,18 @@ export function upcase(input: string): string {
 export function titleCase(input: string, opts: { wordSeparator?: string } = {}): string {
   const sep = opts.wordSeparator ?? " "
   const chars = Array.from(input)
-  if (chars.length > 0) chars[0] = chars[0]!.toUpperCase()
+  // Ruby gsub(/^(.)/, &:upcase): `^` matches at the start of EVERY
+  // line (Ruby's ^ is line-anchored), and `.` never matches the
+  // newline — so the first char of each line upcases, not just the
+  // string's head. The string-head reading left reversed-downcase runs
+  // converting only position 0 (the WO20 reverse-golden
+  // un-ell-Grek-Latn-1987-phonetic family; ruby is the ground truth).
+  let atLineStart = true
+  for (let k = 0; k < chars.length; k++) {
+    const c = chars[k]!
+    if (atLineStart && c !== "\n") chars[k] = c.toUpperCase()
+    atLineStart = c === "\n"
+  }
   if (sep === "") return chars.join("")
   const sepChars = Array.from(sep)
   const out: string[] = []
