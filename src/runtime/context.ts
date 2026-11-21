@@ -32,12 +32,28 @@ export class ExecutionContext {
   /** Function cache so repeated function calls don't re-resolve. */
   readonly functions: CompiledMap["functions"]
 
-  constructor(map: CompiledMap, initial: string, loader?: MapLoader, selectedLanguage?: string) {
+  /**
+   * maps#294 (WO20 fuzz) — the stages currently in flight, keyed
+   * `map.<document>.stage.<stage>` (the RESOLVED target, not the alias
+   * spelling). Seeded by the executeStage entry points; every nested run
+   * extends it. A revisited entry is a named run-cycle error, never a
+   * stack-overflow crash.
+   */
+  readonly runChain: string[]
+
+  constructor(
+    map: CompiledMap,
+    initial: string,
+    loader?: MapLoader,
+    selectedLanguage?: string,
+    runChain: string[] = [],
+  ) {
     this.map = map
     this.current = initial
     this.functions = map.functions
     this.loader = loader
     this.selectedLanguage = selectedLanguage
+    this.runChain = runChain
   }
 
   resolveAlias(name: string): Item | undefined {
@@ -66,9 +82,11 @@ export class ExecutionContext {
   /**
    * Spawn a new context for a different map (used by `run` rule with docName).
    * Reuses the same loader and language selection; fresh alias cache.
+   * The run chain is SHARED (by reference) so a cycle across run-target
+   * maps is still one chain (maps#294).
    */
   withMap(map: CompiledMap): ExecutionContext {
-    return new ExecutionContext(map, this.current, this.loader, this.selectedLanguage)
+    return new ExecutionContext(map, this.current, this.loader, this.selectedLanguage, this.runChain)
   }
 
   /**
