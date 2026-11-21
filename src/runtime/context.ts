@@ -86,7 +86,13 @@ export class ExecutionContext {
    * maps is still one chain (maps#294).
    */
   withMap(map: CompiledMap): ExecutionContext {
-    return new ExecutionContext(map, this.current, this.loader, this.selectedLanguage, this.runChain)
+    return new ExecutionContext(
+      map,
+      this.current,
+      this.loader,
+      this.selectedLanguage,
+      this.runChain,
+    )
   }
 
   /**
