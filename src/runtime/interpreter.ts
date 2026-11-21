@@ -78,7 +78,11 @@ export function executeStage(
     )
   }
 
-  const ctx = new ExecutionContext(map, input, loader, language)
+  // maps#294: seed the run chain with the invoked stage, so a cycle
+  // back to the entry stage is named from the first revisit.
+  const ctx = new ExecutionContext(map, input, loader, language, [
+    `map.${map.systemCode}.stage.${stageName}`,
+  ])
   for (const rule of stage.rules) {
     executeRule(rule, ctx)
   }
@@ -106,7 +110,10 @@ export async function executeStageAsync(
   }
 
   // Async path: same executors, but funcall results are awaited.
-  const ctx = new ExecutionContext(map, input, loader, language)
+  // maps#294: seed the run chain with the invoked stage (same as sync).
+  const ctx = new ExecutionContext(map, input, loader, language, [
+    `map.${map.systemCode}.stage.${stageName}`,
+  ])
   for (const rule of stage.rules) {
     await executeRuleAsync(rule, ctx)
   }

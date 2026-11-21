@@ -132,9 +132,28 @@ const executors: { [K in RuleKind]: RuleExecutorFor<K> } = {
     const targetMap = rule.docName ? ctx.loadDependency(rule.docName) : ctx.map
     const target = targetMap.stages.find((s) => s.name === rule.stage)
     if (!target) throw new MapLogicError(`Stage not found: ${rule.stage}`)
+    // maps#294 (WO20 fuzz): a self- or mutual-recursive run recursed
+    // until RangeError — a crash-class death embedders cannot handle.
+    // The run chain (shared across run-target maps) holds the stages in
+    // flight; a revisited RESOLVED target (document + stage, not the
+    // alias spelling) is a named MapLogicError carrying the chain, in
+    // the directive's own syntax. Mirrors rs's shipped 0.3.3 guard and
+    // the W1 `use cycle:` named errors; py's conversion-time guard fires
+    // earlier still. A NON-cyclic re-run (a diamond: two callers sharing
+    // one downstream run) stays legal — the entry is popped after the
+    // target completes.
+    const entry = `map.${targetMap.systemCode}.stage.${rule.stage}`
+    if (ctx.runChain.includes(entry)) {
+      throw new MapLogicError(`run cycle: ${[...ctx.runChain, entry].join(" -> ")}`)
+    }
+    ctx.runChain.push(entry)
     const inner = ctx.withMap(targetMap)
-    for (const r of target.rules) {
-      executeRule(r, inner)
+    try {
+      for (const r of target.rules) {
+        executeRule(r, inner)
+      }
+    } finally {
+      ctx.runChain.pop()
     }
     // Propagate the transformed string back to the outer context.
     ctx.current = inner.current
