@@ -17,7 +17,7 @@ import { unzipSync } from "fflate"
 import { load as loadYaml } from "js-yaml"
 
 import type { InferenceSession, MLModel, Tensor } from "../../types.js"
-import { createSession } from "../../session/index.js"
+import { createSession, type SessionOptions } from "../../session/index.js"
 import { encode as encodeByt5 } from "../../imf/tokens.js"
 
 export class PlaneError extends Error {}
@@ -111,7 +111,7 @@ export class PlaneModel implements MLModel {
     this.classToId = new Map(classes.map((c, i) => [c, i]))
   }
 
-  static async fromZip(zipBytes: Uint8Array): Promise<PlaneModel> {
+  static async fromZip(zipBytes: Uint8Array, sessionOpts: SessionOptions = {}): Promise<PlaneModel> {
     const { manifest, files, graphMember } = parseManifest(zipBytes)
     for (const member of [graphMember, "classes.json"]) {
       const got = await sha256Hex(files[member]!)
@@ -120,7 +120,12 @@ export class PlaneModel implements MLModel {
       }
     }
     const classes = JSON.parse(new TextDecoder().decode(files["classes.json"])) as string[]
-    const session = await createSession(files[graphMember]!)
+    // default webgpu=false: the conformance contract is byte-exact, and
+    // GPU execution providers vary per device
+    const session = await createSession(files[graphMember]!, {
+      webgpu: false,
+      ...sessionOpts,
+    })
     return new PlaneModel(session, classes, manifest.kPasses)
   }
 
