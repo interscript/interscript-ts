@@ -63,7 +63,11 @@ async function fetchHttpBytes(url: string): Promise<Uint8Array> {
 
 async function fetchIndex(source: string): Promise<Record<string, IndexEntry>> {
   if (source.startsWith("http://") || source.startsWith("https://")) {
-    const bytes = await fetchHttpBytes(source)
+    // The index is a GitHub Release asset; the github.com redirect hop
+    // carries no ACAO, so browsers must go through the API front door
+    // (corsAssetUrl passes other URLs through unchanged). The sidecar
+    // verification below proves whatever channel delivered the bytes.
+    const bytes = await fetchHttpBytes(corsAssetUrl(source))
     const sidecarRes = await fetch(`${corsAssetUrl(source)}.sha256`)
     if (!sidecarRes.ok) {
       throw new RegistryError(
