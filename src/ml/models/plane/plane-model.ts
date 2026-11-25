@@ -111,7 +111,10 @@ export class PlaneModel implements MLModel {
     this.classToId = new Map(classes.map((c, i) => [c, i]))
   }
 
-  static async fromZip(zipBytes: Uint8Array, sessionOpts: SessionOptions = {}): Promise<PlaneModel> {
+  static async fromZip(
+    zipBytes: Uint8Array,
+    sessionOpts: SessionOptions = {},
+  ): Promise<PlaneModel> {
     const { manifest, files, graphMember } = parseManifest(zipBytes)
     for (const member of [graphMember, "classes.json"]) {
       const got = await sha256Hex(files[member]!)
