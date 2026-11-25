@@ -6,7 +6,7 @@
  * reference on the golden sets.
  */
 
-import { createSession, type InferenceSession } from "../session/index.js"
+import { createSession, type InferenceSession, type SessionOptions } from "../session/index.js"
 import type { Tensor } from "../types.js"
 import { verifyAndRead, parseManifest, type IMFManifest } from "./loader.js"
 import { resolve } from "./registry.js"
@@ -67,15 +67,21 @@ export class IMFModel {
     this.pasts = this.kv ? this.zeroPastSpecs() : []
   }
 
-  static async fromZipBytes(zipBytes: Uint8Array): Promise<IMFModel> {
+  static async fromZipBytes(
+    zipBytes: Uint8Array,
+    sessionOpts: SessionOptions = {},
+  ): Promise<IMFModel> {
     const manifest = parseManifest(zipBytes)
     const graphs = await verifyAndRead(zipBytes)
-    const encoder = await createSession(graphs.get("encoder.onnx")!)
+    // default webgpu=false: the conformance contract is byte-exact, and
+    // GPU execution providers vary per device
+    const opts: SessionOptions = { webgpu: false, ...sessionOpts }
+    const encoder = await createSession(graphs.get("encoder.onnx")!, opts)
     const decoderName =
       manifest.decoder === "kv" && graphs.has("decoder-kv.onnx")
         ? "decoder-kv.onnx"
         : "decoder.onnx"
-    const decoder = (await createSession(graphs.get(decoderName)!)) as MetadataSession
+    const decoder = (await createSession(graphs.get(decoderName)!, opts)) as MetadataSession
     return new IMFModel(manifest, encoder, decoder)
   }
 

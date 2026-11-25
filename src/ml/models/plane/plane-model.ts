@@ -6,8 +6,10 @@
  * previous argmax; per-character class = majority vote over the char's
  * byte-token predictions. Byte table: id = byte + 3 (canonical ByT5,
  * see imf/tokens). Zip contract: metadata.yaml (kind: plane, k_passes,
- * member sha256s) + plane.onnx + classes.json, every member
- * sha-verified before the session is created — mirroring the Python
+ * member sha256s under `members` — or `sha256` on the int8-dynamic
+ * shipgate layout) + one manifest-covered graph member (plane.onnx /
+ * plane-int8dynamic.onnx) + classes.json, every member sha-verified
+ * before the session is created — mirroring the Python
  * and Ruby runtimes exactly.
  */
 
@@ -15,7 +17,7 @@ import { unzipSync } from "fflate"
 import { load as loadYaml } from "js-yaml"
 
 import type { InferenceSession, MLModel, Tensor } from "../../types.js"
-import { createSession } from "../../session/index.js"
+import { createSession, type SessionOptions } from "../../session/index.js"
 import { encode as encodeByt5 } from "../../imf/tokens.js"
 
 export class PlaneError extends Error {}
@@ -40,6 +42,7 @@ async function sha256Hex(data: Uint8Array): Promise<string> {
 function parseManifest(zipBytes: Uint8Array): {
   manifest: PlaneManifest
   files: Record<string, Uint8Array>
+  graphMember: string
 } {
   const files = unzipSync(zipBytes)
   const metaBytes = files["metadata.yaml"]
@@ -48,11 +51,20 @@ function parseManifest(zipBytes: Uint8Array): {
   if (raw["kind"] !== "plane") {
     throw new PlaneError(`plane zip: kind=${String(raw["kind"])}, expected 'plane'`)
   }
-  const members = (raw["members"] ?? {}) as Record<string, string>
-  for (const member of ["plane.onnx", "classes.json"]) {
-    if (!files[member]) throw new PlaneError(`plane zip: ${member} missing`)
-    if (!members[member]) throw new PlaneError(`plane zip: ${member} has no sha256 in metadata`)
+  // Member-hash table: classic zips list per-member sha256s under
+  // `members`; the int8-dynamic release zips (WO92 shipgate layout)
+  // list them under `sha256` instead. Same table shape either way.
+  const members = (raw["members"] ?? raw["sha256"] ?? {}) as Record<string, string>
+  if (!files["classes.json"]) throw new PlaneError("plane zip: classes.json missing")
+  if (!members["classes.json"]) {
+    throw new PlaneError("plane zip: classes.json has no sha256 in metadata")
   }
+  // The graph member carries its precision in the file name
+  // (plane.onnx, plane-int8dynamic.onnx, …); resolve it through the
+  // manifest rather than a fixed name so a precision rename cannot
+  // silently skip verification.
+  const graphMember = Object.keys(members).find((n) => n.endsWith(".onnx") && files[n])
+  if (!graphMember) throw new PlaneError("plane zip: no manifest-covered .onnx member")
   return {
     manifest: {
       id: String(raw["id"] ?? ""),
@@ -60,6 +72,7 @@ function parseManifest(zipBytes: Uint8Array): {
       members,
     },
     files,
+    graphMember,
   }
 }
 
@@ -98,16 +111,24 @@ export class PlaneModel implements MLModel {
     this.classToId = new Map(classes.map((c, i) => [c, i]))
   }
 
-  static async fromZip(zipBytes: Uint8Array): Promise<PlaneModel> {
-    const { manifest, files } = parseManifest(zipBytes)
-    for (const member of ["plane.onnx", "classes.json"]) {
+  static async fromZip(
+    zipBytes: Uint8Array,
+    sessionOpts: SessionOptions = {},
+  ): Promise<PlaneModel> {
+    const { manifest, files, graphMember } = parseManifest(zipBytes)
+    for (const member of [graphMember, "classes.json"]) {
       const got = await sha256Hex(files[member]!)
       if (got !== manifest.members[member]) {
         throw new PlaneError(`plane zip: ${member} sha256 mismatch (${got})`)
       }
     }
     const classes = JSON.parse(new TextDecoder().decode(files["classes.json"])) as string[]
-    const session = await createSession(files["plane.onnx"]!)
+    // default webgpu=false: the conformance contract is byte-exact, and
+    // GPU execution providers vary per device
+    const session = await createSession(files[graphMember]!, {
+      webgpu: false,
+      ...sessionOpts,
+    })
     return new PlaneModel(session, classes, manifest.kPasses)
   }
 

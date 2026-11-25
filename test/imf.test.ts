@@ -335,6 +335,43 @@ describe("registry", () => {
       await expect(resolve("nope", url)).rejects.toThrow(/index sha256/)
     })
   })
+
+  it("GitHub Release index URLs are fetched through the CORS front door", async () => {
+    // Browsers cannot fetch github.com release assets (the redirect hop
+    // carries no ACAO); the index body must take the same front door as
+    // its sidecar. (WO: browser vocalization demo — DEFAULT_INDEX_URL
+    // threw "Failed to fetch" without this.)
+    const { createHash } = await import("node:crypto")
+    const body = "version: 1\nmodels: {}\n"
+    const good = createHash("sha256").update(body).digest("hex")
+    const urls: string[] = []
+    const realFetch = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      urls.push(url)
+      if (url.endsWith(".sha256")) {
+        return new Response(`${good}  models-index.yaml\n`, { status: 200 })
+      }
+      return new Response(body, { status: 200 })
+    }) as typeof fetch
+    try {
+      await expect(
+        resolve(
+          "nope",
+          "https://github.com/interscript/interscript-models/releases/download/index-v18/models-index.yaml",
+        ),
+      ).rejects.toThrow(/unknown model id/)
+    } finally {
+      globalThis.fetch = realFetch
+    }
+    expect(urls.length).toBeGreaterThanOrEqual(2)
+    for (const url of urls) {
+      expect(url.startsWith("https://github.com/"), `${url} must not hit github directly`).toBe(
+        false,
+      )
+      expect(url.startsWith("https://api.interscript.org/v1/assets/"), url).toBe(true)
+    }
+  })
   it("the public ./ml surface no longer exports the deprecated manifest APIs", async () => {
     const ml = (await import("../src/ml/index.js")) as unknown as Record<string, unknown>
     for (const k of [

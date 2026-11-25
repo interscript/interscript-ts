@@ -63,7 +63,11 @@ async function fetchHttpBytes(url: string): Promise<Uint8Array> {
 
 async function fetchIndex(source: string): Promise<Record<string, IndexEntry>> {
   if (source.startsWith("http://") || source.startsWith("https://")) {
-    const bytes = await fetchHttpBytes(source)
+    // The index is a GitHub Release asset; the github.com redirect hop
+    // carries no ACAO, so browsers must go through the API front door
+    // (corsAssetUrl passes other URLs through unchanged). The sidecar
+    // verification below proves whatever channel delivered the bytes.
+    const bytes = await fetchHttpBytes(corsAssetUrl(source))
     const sidecarRes = await fetch(`${corsAssetUrl(source)}.sha256`)
     if (!sidecarRes.ok) {
       throw new RegistryError(
@@ -380,7 +384,7 @@ export async function resolve(
         `assembled ${entry.filename} sha256 mismatch: got ${actual}, index says ${entry.sha256}`,
       )
     }
-    if (cache) await cache.put(cacheKey(modelId, entry.filename), new Response(bytes))
+    await cacheVerified(cache, modelId, entry.filename, bytes)
     return { bytes }
   }
 
@@ -401,6 +405,25 @@ export async function resolve(
     fs.renameSync(tmp, target)
     return { bytes, path: target }
   }
-  if (cache) await cache.put(cacheKey(modelId, entry.filename), new Response(bytes))
+  await cacheVerified(cache, modelId, entry.filename, bytes)
   return { bytes }
+}
+
+/** Persist verified bytes. Cache persistence is an optimization, never
+ * a correctness gate: storage failures (quota, private mode, Chromium's
+ * Cache.put limits on multi-hundred-MB entries) must not fail a
+ * download whose bytes are already verified — the next load simply
+ * re-downloads and re-verifies. */
+async function cacheVerified(
+  cache: BrowserCache | undefined,
+  modelId: string,
+  filename: string,
+  bytes: Uint8Array,
+): Promise<void> {
+  if (!cache) return
+  try {
+    await cache.put(cacheKey(modelId, filename), new Response(bytes))
+  } catch {
+    /* storage unavailable */
+  }
 }

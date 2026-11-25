@@ -34,6 +34,41 @@ describe("plane loader", () => {
     const tampered = { ...files, "plane.onnx": new Uint8Array([...files["plane.onnx"]!, 0x78]) }
     await expect(createPlaneModel(zipSync(tampered))).rejects.toThrow(/sha256/)
   })
+
+  it("loads the int8-dynamic shipgate layout (sha256 table, precision-suffixed member)", async () => {
+    // heb-vocalized-plane-3.0 and later ship metadata with the member
+    // hashes under `sha256` (not `members`) and the graph as
+    // `plane-int8dynamic.onnx` (not `plane.onnx`). Same contract,
+    // different table key + graph member name.
+    const { unzipSync, zipSync } = await import("fflate")
+    const files = unzipSync(fixture())
+    const meta = new TextDecoder().decode(files["metadata.yaml"]!)
+    const shipgate = meta
+      .replace("members:", "sha256:")
+      .replace("plane.onnx", "plane-int8dynamic.onnx")
+    const relabeled = {
+      "metadata.yaml": new TextEncoder().encode(shipgate),
+      "plane-int8dynamic.onnx": files["plane.onnx"]!,
+      "classes.json": files["classes.json"]!,
+    }
+    const model = await createPlaneModel(zipSync(relabeled))
+    expect(model.kPasses).toBe(2)
+    expect(await model.transform("كتب")).toBe("كُتُبُ")
+  })
+
+  it("rejects a zip whose onnx member is not manifest-covered", async () => {
+    const { unzipSync, zipSync } = await import("fflate")
+    const files = unzipSync(fixture())
+    const meta = new TextDecoder().decode(files["metadata.yaml"]!)
+    // drop the graph hash from the table: the onnx member is no longer covered
+    const stripped = meta.replace(/^\s*plane\.onnx: .*\n/m, "")
+    const tampered = {
+      "metadata.yaml": new TextEncoder().encode(stripped),
+      "plane.onnx": files["plane.onnx"]!,
+      "classes.json": files["classes.json"]!,
+    }
+    await expect(createPlaneModel(zipSync(tampered))).rejects.toThrow(/manifest-covered/)
+  })
 })
 
 describe("PlaneModel.transform", () => {
